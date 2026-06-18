@@ -1,6 +1,7 @@
 import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy.orm import Mapped
 
 from app.database import Base
 
@@ -26,7 +27,7 @@ class Patient(Base):
     ward = Column(String(50), default="")
     assigned_doctor = Column(String(100), default="")
     assigned_nurse = Column(String(100), default="")
-    status = Column(String(20), default="Registered")
+    status: Mapped[str] = Column(String(20), default="Registered")
 
 
 class Appointment(Base):
@@ -83,7 +84,7 @@ class Medication(Base):
     patient_id = Column(String(20), nullable=False)
     medicine_name = Column(String(100), nullable=False)
     prescribed_by = Column(String(100), nullable=False)
-    status = Column(String(20), default="Prescribed")
+    status: Mapped[str] = Column(String(20), default="Prescribed")
 
 
 class Notification(Base):
@@ -93,5 +94,5 @@ class Notification(Base):
     notification_id = Column(String(20), unique=True, nullable=False)
     recipient_role = Column(String(20), nullable=False)
     message = Column(Text, nullable=False)
-    status = Column(String(20), default="Unread")
+    status: Mapped[str] = Column(String(20), default="Unread")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

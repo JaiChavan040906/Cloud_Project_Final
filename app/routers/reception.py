@@ -1,21 +1,28 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
 from app.models import Appointment, Event, Patient, User
-from app.schemas import AppointmentCreate, PatientRegister
+from app.schemas import (
+    AppointmentCreate,
+    AppointmentIdResponse,
+    PatientIdResponse,
+    PatientRegister,
+)
 
 router = APIRouter(dependencies=[Depends(role_required("reception", "admin"))])
 
 
-@router.post("/patients/register")
+@router.post("/patients/register", response_model=PatientIdResponse)
 def register_patient(
     data: PatientRegister, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
 ):
     existing = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Patient already exists")
+        raise HTTPException(status_code=400, detail="Patient with this ID already exists")
     patient = Patient(**data.model_dump())
     db.add(patient)
     event = Event(
@@ -29,10 +36,16 @@ def register_patient(
     return {"message": "Patient registered", "patient_id": data.patient_id}
 
 
-@router.post("/appointments")
+@router.post("/appointments", response_model=AppointmentIdResponse)
 def create_appointment(
     data: AppointmentCreate, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
 ):
+    patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    existing = db.query(Appointment).filter(Appointment.appointment_id == data.appointment_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Appointment with this ID already exists")
     appointment = Appointment(**data.model_dump())
     db.add(appointment)
     event = Event(
@@ -46,14 +59,16 @@ def create_appointment(
     return {"message": "Appointment created", "appointment_id": data.appointment_id}
 
 
-@router.post("/patients/{patient_id}/checkin")
+@router.post("/patients/{patient_id}/checkin", response_model=PatientIdResponse)
 def checkin_patient(
     patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    patient.status = "Checked In"
+    if patient.status == cast(str, "Checked In"):
+        raise HTTPException(status_code=400, detail="Patient is already checked in")
+    patient.status = cast(str, "Checked In")
     event = Event(
         event_id=f"EVT-{patient_id}-CHK",
         event_type="PatientCheckedIn",
@@ -67,8 +82,7 @@ def checkin_patient(
 
 @router.get("/admissions")
 def list_admissions(db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))):
-    patients = db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"])).all()
-    return patients
+    return db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"])).all()
 
 
 @router.get("/appointments")
