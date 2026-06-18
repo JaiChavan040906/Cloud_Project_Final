@@ -44,7 +44,9 @@ def assigned_patients(
     db: Session = Depends(get_db),
     user: User = Depends(role_required("nurse", "admin")),
 ):
-    query = db.query(Patient).filter(Patient.assigned_nurse == user.username)
+    query = db.query(Patient)
+    if user.role != "admin":
+        query = query.filter(Patient.assigned_nurse == user.username)
     if status:
         query = query.filter(Patient.status == status)
     query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
