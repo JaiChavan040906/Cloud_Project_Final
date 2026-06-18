@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.engine.routing import get_recipients
 from app.engine.risk import evaluate_vitals
+from app.engine.routing import get_recipients
 from app.models import Alert, Appointment, Event, Medication, Notification, Patient, Review
 from app.schemas import MessageResponse, SimulatorNextResponse, SimulatorStateResponse
 from app.services.notifications import create_notification
@@ -206,6 +206,35 @@ def next_event(db: Session = Depends(get_db)):
         create_notification(db, role, f"{event_type}: {step_data['description']}")
 
     send_to_sqs(step_data)
+
+    return {"step": step_data, "recipients": recipients}
+
+
+@router.post(
+    "/simulator/previous",
+    response_model=SimulatorNextResponse,
+    summary="Process Previous Event",
+    description="Go back one step by undoing the last processed event and its notification.",
+)
+def previous_event(db: Session = Depends(get_db)):
+    if sim_state["current_step"] <= 0:
+        raise HTTPException(status_code=400, detail="No events to undo.")
+
+    sim_state["current_step"] -= 1
+    events = _load_events()
+    step_data = events[sim_state["current_step"]]
+
+    event_id = f"SIM-{step_data['step']}-{step_data['patient_id']}"
+    event = db.query(Event).filter(Event.event_id == event_id).first()
+    if event:
+        db.delete(event)
+
+    db.query(Notification).filter(
+        Notification.message.ilike(f"{step_data['event_type']}: {step_data['description']}%")
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    recipients = get_recipients(step_data["event_type"])
 
     return {"step": step_data, "recipients": recipients}
 

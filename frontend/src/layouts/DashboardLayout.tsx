@@ -15,7 +15,6 @@ import {
   Syringe,
   UserCheck,
   Bell,
-  PlayCircle,
 } from "lucide-react"
 
 interface NavItem {
@@ -79,12 +78,6 @@ const navItems: NavItem[] = [
     icon: <Syringe className="h-4 w-4" />,
     path: "/dashboard/doctor?tab=prescriptions",
     roles: ["doctor"],
-  },
-  {
-    label: "Simulator",
-    icon: <PlayCircle className="h-4 w-4" />,
-    path: "/simulator",
-    roles: ["admin", "doctor", "nurse", "reception"],
   },
 ]
 

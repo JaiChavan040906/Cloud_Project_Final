@@ -11,7 +11,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/simulator" element={<Simulator />} />
+          <Route path="/" element={<Simulator />} />
           <Route path="/login" element={<Login />} />
 
           <Route path="/dashboard/:role" element={<ProtectedRoute />}>
@@ -20,7 +20,6 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

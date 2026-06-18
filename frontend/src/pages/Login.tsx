@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import { AxiosError } from "axios"
 import type { UserRole } from "@/types"
-import { Activity, Shield, Stethoscope, Syringe, UserCheck, ArrowLeft } from "lucide-react"
+import { Activity, PlayCircle, Shield, Stethoscope, Syringe, UserCheck, ArrowLeft } from "lucide-react"
 
 interface RoleConfig {
   role: UserRole
@@ -195,6 +195,16 @@ export default function Login() {
             </div>
           </button>
         ))}
+      </div>
+
+      <div className="mt-6 text-center text-sm text-muted-foreground">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1 hover:text-foreground"
+        >
+          <PlayCircle className="h-3 w-3" />
+          Go to Simulator
+        </Link>
       </div>
     </div>
   )
