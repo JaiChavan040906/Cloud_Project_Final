@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
+from app.engine.routing import get_recipients
 from app.models import Alert, Event, Medication, Patient, Review, User
 from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
@@ -17,8 +18,10 @@ from app.schemas import (
     ReviewCreate,
     ReviewIdResponse,
 )
+from app.services.notifications import create_notification
+from app.services.sqs import send_to_sqs
 
-router = APIRouter(dependencies=[Depends(role_required("doctor", "admin"))])
+router = APIRouter()
 
 
 @router.get(
@@ -149,6 +152,17 @@ def prescribe_medicine(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "MedicationPrescribed",
+        "patient_id": data.patient_id,
+        "description": f"Medication {data.medicine_name} prescribed",
+    }
+    for role in get_recipients("MedicationPrescribed"):
+        create_notification(db, role, f"MedicationPrescribed: {data.medicine_name} for patient {data.patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Medicine prescribed", "medication_id": data.medication_id}
 
 
@@ -182,6 +196,17 @@ def submit_review(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "PatientReviewed",
+        "patient_id": data.patient_id,
+        "description": f"Patient {data.patient_id} reviewed",
+    }
+    for role in get_recipients("PatientReviewed"):
+        create_notification(db, role, f"PatientReviewed: {data.patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Review submitted", "review_id": data.review_id}
 
 
@@ -213,4 +238,15 @@ def approve_discharge(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "DischargeApproved",
+        "patient_id": patient_id,
+        "description": f"Patient {patient_id} discharged",
+    }
+    for role in get_recipients("DischargeApproved"):
+        create_notification(db, role, f"DischargeApproved: {patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Discharge approved", "patient_id": patient_id}

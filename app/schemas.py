@@ -33,6 +33,8 @@ class PatientRegister(BaseModel):
     gender: str = Field(..., examples=["Male"])
     department: str = Field(default="General", examples=["Cardiology"])
     ward: str = Field(default="", examples=["A1"])
+    assigned_doctor: str = Field(default="", examples=["doctor"])
+    assigned_nurse: str = Field(default="", examples=["nurse"])
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -44,6 +46,8 @@ class PatientRegister(BaseModel):
                     "gender": "Male",
                     "department": "Cardiology",
                     "ward": "A1",
+                    "assigned_doctor": "doctor",
+                    "assigned_nurse": "nurse",
                 }
             ]
         }

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.engine.routing import get_recipients
-from app.models import Event, Notification
+from app.models import Event, Notification, Patient
 from app.schemas import MessageResponse, SimulatorNextResponse, SimulatorStateResponse
 from app.services.notifications import create_notification
 from app.services.sqs import send_to_sqs
@@ -72,6 +72,19 @@ def next_event(db: Session = Depends(get_db)):
         status="Processed",
     )
     db.add(event)
+
+    status_map = {
+        "PatientCheckedIn": "Checked In",
+        "AdmissionRequested": "Admission Requested",
+        "AdmissionApproved": "Admitted",
+        "DischargeApproved": "Discharged",
+    }
+    new_status = status_map.get(step_data["event_type"])
+    if new_status:
+        patient = db.query(Patient).filter(Patient.patient_id == step_data["patient_id"]).first()
+        if patient:
+            patient.status = new_status
+
     db.commit()
 
     recipients = get_recipients(step_data["event_type"])

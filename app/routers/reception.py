@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
+from app.engine.routing import get_recipients
 from app.models import Appointment, Event, Patient, User
 from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
@@ -15,6 +16,8 @@ from app.schemas import (
     PatientIdResponse,
     PatientRegister,
 )
+from app.services.notifications import create_notification
+from app.services.sqs import send_to_sqs
 
 router = APIRouter()
 
@@ -46,6 +49,17 @@ def register_patient(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "PatientRegistered",
+        "patient_id": data.patient_id,
+        "description": f"Patient {data.name} registered",
+    }
+    for role in get_recipients("PatientRegistered"):
+        create_notification(db, role, f"PatientRegistered: {data.name} registered")
+    send_to_sqs(event_data)
+
     return {"message": "Patient registered", "patient_id": data.patient_id}
 
 
@@ -79,6 +93,17 @@ def create_appointment(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "AppointmentCreated",
+        "patient_id": data.patient_id,
+        "description": f"Appointment {data.appointment_id} created",
+    }
+    for role in get_recipients("AppointmentCreated"):
+        create_notification(db, role, f"AppointmentCreated: {data.appointment_id} for patient {data.patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Appointment created", "appointment_id": data.appointment_id}
 
 
@@ -110,7 +135,60 @@ def checkin_patient(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "PatientCheckedIn",
+        "patient_id": patient_id,
+        "description": f"Patient {patient_id} checked in",
+    }
+    for role in get_recipients("PatientCheckedIn"):
+        create_notification(db, role, f"PatientCheckedIn: {patient_id} checked in")
+    send_to_sqs(event_data)
+
     return {"message": "Patient checked in", "patient_id": patient_id}
+
+
+@router.post(
+    "/patients/{patient_id}/admission-request",
+    response_model=PatientIdResponse,
+    summary="Request Admission",
+    description=(
+        "Request admission for an existing patient. This sets the patient status to Admission Requested "
+        "and emits an AdmissionRequested event. Available to Receptionist and Admin roles."
+    ),
+)
+def request_admission(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
+):
+    patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    if patient.status == "Admission Requested":
+        raise HTTPException(status_code=400, detail="Admission already requested")
+    patient.status = cast(str, "Admission Requested")
+    event = Event(
+        event_id=f"EVT-{patient_id}-ADMRQ",
+        event_type="AdmissionRequested",
+        patient_id=patient_id,
+        description=f"Admission requested for patient {patient_id}",
+    )
+    db.add(event)
+    db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "AdmissionRequested",
+        "patient_id": patient_id,
+        "description": f"Admission requested for patient {patient_id}",
+    }
+    for role in get_recipients("AdmissionRequested"):
+        create_notification(db, role, f"AdmissionRequested: {patient_id}")
+    send_to_sqs(event_data)
+
+    return {"message": "Admission requested", "patient_id": patient_id}
 
 
 @router.get(

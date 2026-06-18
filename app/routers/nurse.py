@@ -1,3 +1,4 @@
+import uuid
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -5,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
+from app.engine.risk import evaluate_vitals
+from app.engine.routing import get_recipients
 from app.models import Alert, Event, Medication, Patient, User
 from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
@@ -16,8 +19,10 @@ from app.schemas import (
     VitalsRecord,
     VitalsResponse,
 )
+from app.services.notifications import create_notification
+from app.services.sqs import send_to_sqs
 
-router = APIRouter(dependencies=[Depends(role_required("nurse", "admin"))])
+router = APIRouter()
 
 
 @router.get(
@@ -76,53 +81,56 @@ def record_vitals(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    hr = data.heart_rate
-    spo2 = data.oxygen_level
-    temp = data.temperature
-    sugar = data.blood_sugar
+    result = evaluate_vitals(
+        heart_rate=data.heart_rate,
+        bp_systolic=data.blood_pressure_systolic,
+        bp_diastolic=data.blood_pressure_diastolic,
+        spo2=data.oxygen_level,
+        temperature=data.temperature,
+        blood_sugar=data.blood_sugar,
+    )
 
-    reasons = []
-    if hr > 100 or hr < 60:
-        reasons.append(f"Heart rate abnormal: {hr}")
-    if spo2 < 95:
-        reasons.append(f"Low oxygen: {spo2}%")
-    if temp > 100.4:
-        reasons.append(f"Fever: {temp}Â°F")
-    if sugar > 140:
-        reasons.append(f"High blood sugar: {sugar}")
+    severity = result["status"]
+    reasons = result["reasons"]
 
-    severity = "Normal"
-    if len(reasons) >= 2:
-        severity = "Critical"
-    elif len(reasons) == 1:
-        severity = "Warning"
+    if severity == "normal":
+        event_type = "VitalsRecorded"
+    elif severity == "critical":
+        event_type = "CriticalAlertGenerated"
+    elif "Blood sugar" in str(reasons):
+        event_type = "HighSugarDetected"
+    else:
+        event_type = "WarningAlertGenerated"
 
-    event_type = "VitalsRecorded"
-    if severity != "Normal":
-        event_type = (
-            "CriticalAlertGenerated"
-            if severity == "Critical"
-            else "HighSugarDetected"
-            if "sugar" in str(reasons).lower()
-            else "WarningAlertGenerated"
-        )
+    if severity != "normal":
         alert = Alert(
-            alert_id=f"ALT-{data.patient_id}-{Event.id if hasattr(Event, 'id') else 0}",
+            alert_id=f"ALT-{data.patient_id}-{uuid.uuid4().hex[:8].upper()}",
             patient_id=data.patient_id,
-            severity=severity,
+            severity=severity.capitalize(),
             message="; ".join(reasons),
         )
         db.add(alert)
 
     event = Event(
-        event_id=f"EVT-{data.patient_id}-VTL",
+        event_id=f"EVT-{data.patient_id}-{uuid.uuid4().hex[:8].upper()}",
         event_type=event_type,
         patient_id=data.patient_id,
         description=f"Vitals recorded: {'; '.join(reasons) if reasons else 'All normal'}",
     )
     db.add(event)
     db.commit()
-    return {"severity": severity, "reasons": reasons}
+
+    event_data = {
+        "step": 0,
+        "event_type": event_type,
+        "patient_id": data.patient_id,
+        "description": f"Vitals recorded: {'; '.join(reasons) if reasons else 'All normal'}",
+    }
+    for role in get_recipients(event_type):
+        create_notification(db, role, f"{event_type}: Patient {data.patient_id} vitals recorded")
+    send_to_sqs(event_data)
+
+    return {"severity": severity.capitalize(), "reasons": reasons}
 
 
 @router.get(
@@ -228,6 +236,17 @@ def administer_medication(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "MedicationAdministered",
+        "patient_id": med.patient_id,
+        "description": f"Medication {med.medicine_name} administered",
+    }
+    for role in get_recipients("MedicationAdministered"):
+        create_notification(db, role, f"MedicationAdministered: {med.medicine_name} for patient {med.patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Medication administered", "medication_id": medication_id}
 
 
@@ -256,4 +275,15 @@ def complete_checkup(
     )
     db.add(event)
     db.commit()
+
+    event_data = {
+        "step": 0,
+        "event_type": "CheckupCompleted",
+        "patient_id": patient_id,
+        "description": f"Checkup completed for patient {patient_id}",
+    }
+    for role in get_recipients("CheckupCompleted"):
+        create_notification(db, role, f"CheckupCompleted: {patient_id}")
+    send_to_sqs(event_data)
+
     return {"message": "Checkup completed", "patient_id": patient_id}

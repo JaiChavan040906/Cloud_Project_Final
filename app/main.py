@@ -32,6 +32,7 @@ app.add_middleware(
 
 internal_router = APIRouter(tags=["Internal"])
 
+
 @app.get(
     "/health",
     response_model=HealthResponse,
