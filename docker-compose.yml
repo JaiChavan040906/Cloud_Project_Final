@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./hospital.db
+      - JWT_SECRET=super-secret-key
+    volumes:
+      - ./hospital.db:/app/hospital.db
+      - ./data:/app/data
+
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs,s3
+      - AWS_DEFAULT_REGION=us-east-1

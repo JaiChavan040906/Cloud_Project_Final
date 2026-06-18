@@ -1,0 +1,27 @@
+{
+  "agent": {
+    "metrics_collection_interval": 60,
+    "logfile": "/var/log/amazon/amazon-cloudwatch-agent.log"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/backend/app.log",
+            "log_group_name": "/hospital/backend",
+            "log_stream_name": "{instance_id}",
+            "timestamp_format": "%Y-%m-%d %H:%M:%S"
+          },
+          {
+            "file_path": "/var/log/backend/error.log",
+            "log_group_name": "/hospital/errors",
+            "log_stream_name": "{instance_id}",
+            "timestamp_format": "%Y-%m-%d %H:%M:%S"
+          }
+        ]
+      }
+    },
+    "log_stream_name": "{instance_id}"
+  }
+}

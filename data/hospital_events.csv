@@ -1,0 +1,21 @@
+step,event_type,patient_id,description
+1,PatientRegistered,P101,New patient John Doe registered
+2,AppointmentCreated,P101,Follow-up appointment created
+3,PatientRegistered,P102,New patient Jane Smith registered
+4,AdmissionRequested,P102,Admission requested for Jane Smith
+5,AppointmentCreated,P103,Consultation appointment created
+6,PatientRegistered,P104,New patient Bob Wilson registered
+7,VitalsRecorded,P104,Routine vitals recorded
+8,HighSugarDetected,P104,High blood sugar detected - 185 mg/dL
+9,MedicationPrescribed,P104,Insulin prescribed for high blood sugar
+10,MedicationAdministered,P104,Insulin administered to patient
+11,PatientReviewed,P104,Dr. Adams reviewed patient condition
+12,AdmissionRequested,P101,Admission requested for John Doe
+13,AdmissionApproved,P101,Admission approved for John Doe
+14,PatientRegistered,P105,New patient Alice Brown registered
+15,AppointmentCreated,P105,ER follow-up appointment created
+16,VitalsRecorded,P105,Abnormal vitals detected
+17,CriticalAlertGenerated,P105,CRITICAL: Heart rate 135 - Oxygen 88%
+18,PatientReviewed,P105,Dr. Carter reviewed critical patient
+19,DischargeApproved,P105,Patient Alice Brown discharged
+20,PatientCheckedIn,P101,Patient John Doe checked in
