@@ -19,7 +19,7 @@ dependencies = [
 Homepage = "https://github.com/your-org/hospital-event-simulation"
 
 [dependency-groups]
-dev = ["ruff>=0.6.0", "mypy>=1.11.0"]
+dev = ["ruff>=0.6.0", "mypy>=1.11.0", "pytest>=8.0.0"]
 
 [tool.ruff]
 line-length = 120
