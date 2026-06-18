@@ -17,25 +17,25 @@ const roles: RoleConfig[] = [
     role: "admin",
     label: "Admin",
     description: "Full system access & management",
-    icon: <Shield className="h-6 w-6" />,
+    icon: <Shield className="h-10 w-10" />,
   },
   {
     role: "doctor",
     label: "Doctor",
     description: "Reviews, prescriptions & discharge",
-    icon: <Stethoscope className="h-6 w-6" />,
+    icon: <Stethoscope className="h-10 w-10" />,
   },
   {
     role: "nurse",
     label: "Nurse",
     description: "Vitals, alerts & medication",
-    icon: <Syringe className="h-6 w-6" />,
+    icon: <Syringe className="h-10 w-10" />,
   },
   {
     role: "reception",
     label: "Receptionist",
     description: "Registration, appointments & check-in",
-    icon: <UserCheck className="h-6 w-6" />,
+    icon: <UserCheck className="h-10 w-10" />,
   },
 ]
 
@@ -95,7 +95,7 @@ export default function Login() {
   if (selectedRole) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-md">
           <button
             type="button"
             onClick={back}
@@ -168,41 +168,41 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
-      <div className="mb-6 text-center">
-        <div className="mb-2 flex items-center justify-center gap-2">
-          <Activity className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Hospital Event Simulation</h1>
+      <div className="mb-8 text-center">
+        <div className="mb-3 flex items-center justify-center gap-3">
+          <Activity className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold">Hospital Event Simulation</h1>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Select your role to sign in
         </p>
       </div>
 
-      <div className="grid w-full max-w-lg gap-3 sm:grid-cols-2">
+      <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
         {roles.map((role) => (
           <button
             key={role.role}
             type="button"
             onClick={() => selectRole(role)}
-            className="group flex items-center gap-3 rounded-lg border bg-background p-4 text-left shadow-sm transition-all hover:border-primary hover:shadow-md"
+            className="group flex flex-col items-center gap-3 rounded-lg border bg-background p-8 text-center shadow-sm transition-all hover:border-primary hover:shadow-md"
           >
             <div className="shrink-0 text-muted-foreground group-hover:text-primary transition-colors">
               {role.icon}
             </div>
-            <div className="min-w-0">
-              <div className="font-medium">{role.label}</div>
-              <div className="truncate text-xs text-muted-foreground">{role.description}</div>
+            <div>
+              <div className="text-lg font-medium">{role.label}</div>
+              <div className="text-sm text-muted-foreground">{role.description}</div>
             </div>
           </button>
         ))}
       </div>
 
-      <div className="mt-6 text-center text-sm text-muted-foreground">
+      <div className="mt-8 text-center">
         <Link
           to="/"
-          className="inline-flex items-center gap-1 hover:text-foreground"
+          className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-foreground"
         >
-          <PlayCircle className="h-3 w-3" />
+          <PlayCircle className="h-5 w-5" />
           Go to Simulator
         </Link>
       </div>
