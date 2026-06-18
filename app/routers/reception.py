@@ -118,7 +118,12 @@ def list_admissions(
         query,
         sort_by,
         sort_order,
-        {"patient_id": Patient.patient_id, "name": Patient.name, "department": Patient.department, "status": Patient.status},
+        {
+            "patient_id": Patient.patient_id,
+            "name": Patient.name,
+            "department": Patient.department,
+            "status": Patient.status,
+        },
         [Patient.name.asc(), Patient.patient_id.asc()],
     )
     return build_paginated_response(query, page, limit)
@@ -180,7 +185,12 @@ def get_patients(
         query,
         sort_by,
         sort_order,
-        {"patient_id": Patient.patient_id, "name": Patient.name, "department": Patient.department, "status": Patient.status},
+        {
+            "patient_id": Patient.patient_id,
+            "name": Patient.name,
+            "department": Patient.department,
+            "status": Patient.status,
+        },
         [Patient.name.asc(), Patient.patient_id.asc()],
     )
     return build_paginated_response(query, page, limit)

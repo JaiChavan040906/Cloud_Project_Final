@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Literal, cast
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Query as SQLAlchemyQuery
@@ -15,13 +15,14 @@ def apply_search(query: SQLAlchemyQuery, search: str | None, fields: Sequence) -
 def apply_sort(
     query: SQLAlchemyQuery,
     sort_by: str | None,
-    sort_order: Literal["asc", "desc"],
+    sort_order: str,
     allowed_fields: Mapping[str, object],
     default_fields: Sequence[object],
 ) -> SQLAlchemyQuery:
+    order: Literal["asc", "desc"] = cast(Literal["asc", "desc"], sort_order)
     sort_column = allowed_fields.get(sort_by) if sort_by else None
     if sort_column is not None:
-        ordered_column = sort_column.desc() if sort_order == "desc" else sort_column.asc()
+        ordered_column = sort_column.desc() if order == "desc" else sort_column.asc()
         return query.order_by(ordered_column)
     return query.order_by(*default_fields)
 
