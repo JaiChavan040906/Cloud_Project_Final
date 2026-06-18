@@ -22,8 +22,8 @@ export default function Login() {
 
     setIsSubmitting(true)
     try {
-      await login({ username, password })
-      navigate(`/dashboard/${username}`)
+      const res = await login({ username, password })
+      navigate(`/dashboard/${res.role}`)
     } catch (err) {
       if (err instanceof AxiosError) {
         if (err.response?.status === 401) {

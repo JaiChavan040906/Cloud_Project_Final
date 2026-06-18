@@ -12,7 +12,7 @@ import type { LoginRequest, LoginResponse, AuthUser } from "@/types"
 interface AuthContextType {
   user: AuthUser | null
   isLoading: boolean
-  login: (data: LoginRequest) => Promise<void>
+  login: (data: LoginRequest) => Promise<LoginResponse>
   logout: () => void
 }
 
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("token", access_token)
     localStorage.setItem("user", JSON.stringify(authUser))
     setUser(authUser)
+    return res.data
   }, [])
 
   const logout = useCallback(() => {

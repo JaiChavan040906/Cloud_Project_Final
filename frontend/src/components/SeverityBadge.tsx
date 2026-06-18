@@ -1,32 +1,25 @@
-import { Badge } from "@/components/ui/badge"
-
-const severityConfig: Record<string, { variant: "default" | "secondary" | "destructive"; className: string }> = {
-  normal: {
-    variant: "default",
-    className: "bg-green-100 text-green-800 hover:bg-green-100",
-  },
-  warning: {
-    variant: "secondary",
-    className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
-  },
-  critical: {
-    variant: "destructive",
-    className: "bg-red-100 text-red-800 hover:bg-red-100",
-  },
-}
+import { cn } from "@/lib/utils"
 
 interface SeverityBadgeProps {
   severity: string
 }
 
+const severityStyles: Record<string, string> = {
+  normal: "bg-green-100 text-green-800",
+  warning: "bg-yellow-100 text-yellow-800",
+  critical: "bg-red-100 text-red-800",
+}
+
 export default function SeverityBadge({ severity }: SeverityBadgeProps) {
-  const config = severityConfig[severity.toLowerCase()]
-  if (!config) {
-    return <Badge variant="outline">{severity}</Badge>
-  }
+  const key = severity.toLowerCase()
   return (
-    <Badge variant={config.variant} className={config.className}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        severityStyles[key] ?? "bg-gray-100 text-gray-800",
+      )}
+    >
       {severity}
-    </Badge>
+    </span>
   )
 }
