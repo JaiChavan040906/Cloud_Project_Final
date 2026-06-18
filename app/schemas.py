@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -38,6 +38,48 @@ class VitalsRecord(BaseModel):
     temperature: float
     blood_sugar: float
 
+    @field_validator("heart_rate")
+    @classmethod
+    def validate_heart_rate(cls, v: int) -> int:
+        if v < 0 or v > 300:
+            raise ValueError("Heart rate must be between 0 and 300 bpm")
+        return v
+
+    @field_validator("blood_pressure_systolic")
+    @classmethod
+    def validate_bp_systolic(cls, v: int) -> int:
+        if v < 0 or v > 300:
+            raise ValueError("Systolic BP must be between 0 and 300")
+        return v
+
+    @field_validator("blood_pressure_diastolic")
+    @classmethod
+    def validate_bp_diastolic(cls, v: int) -> int:
+        if v < 0 or v > 200:
+            raise ValueError("Diastolic BP must be between 0 and 200")
+        return v
+
+    @field_validator("oxygen_level")
+    @classmethod
+    def validate_spo2(cls, v: float) -> float:
+        if v < 0 or v > 100:
+            raise ValueError("Oxygen level must be between 0 and 100")
+        return v
+
+    @field_validator("temperature")
+    @classmethod
+    def validate_temperature(cls, v: float) -> float:
+        if v < 90 or v > 110:
+            raise ValueError("Temperature must be between 90 and 110 °F")
+        return v
+
+    @field_validator("blood_sugar")
+    @classmethod
+    def validate_blood_sugar(cls, v: float) -> float:
+        if v < 0 or v > 1000:
+            raise ValueError("Blood sugar must be between 0 and 1000 mg/dL")
+        return v
+
 
 class PrescriptionCreate(BaseModel):
     medication_id: str
@@ -63,3 +105,45 @@ class SimulatorEvent(BaseModel):
     event_type: str
     patient_id: str
     description: str
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class PatientIdResponse(BaseModel):
+    message: str
+    patient_id: str
+
+
+class AppointmentIdResponse(BaseModel):
+    message: str
+    appointment_id: str
+
+
+class MedicationIdResponse(BaseModel):
+    message: str
+    medication_id: str
+
+
+class ReviewIdResponse(BaseModel):
+    message: str
+    review_id: str
+
+
+class VitalsResponse(BaseModel):
+    severity: str
+    reasons: list[str]
+
+
+class HealthResponse(BaseModel):
+    status: str
+
+
+class AdminSummaryResponse(BaseModel):
+    total_patients: int
+    admissions_pending: int
+    admitted: int
+    critical_patients: int
+    pending_reviews: int
+    active_alerts: int

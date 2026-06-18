@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,7 +7,7 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, User
 from app.routers import apply_pagination, apply_search, pagination_params
-from app.schemas import VitalsRecord
+from app.schemas import MedicationIdResponse, PatientIdResponse, VitalsRecord, VitalsResponse
 
 router = APIRouter(dependencies=[Depends(role_required("nurse", "admin"))])
 
@@ -27,7 +29,7 @@ def assigned_patients(
     return apply_pagination(query, page, limit).all()
 
 
-@router.post("/vitals")
+@router.post("/vitals", response_model=VitalsResponse)
 def record_vitals(
     data: VitalsRecord, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
 ):
@@ -122,14 +124,16 @@ def medication_queue(
     return apply_pagination(query, page, limit).all()
 
 
-@router.put("/medications/{medication_id}/administer")
+@router.put("/medications/{medication_id}/administer", response_model=MedicationIdResponse)
 def administer_medication(
     medication_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
 ):
     med = db.query(Medication).filter(Medication.medication_id == medication_id).first()
     if not med:
         raise HTTPException(status_code=404, detail="Medication not found")
-    med.status = "Administered"
+    if med.status == cast(str, "Administered"):
+        raise HTTPException(status_code=400, detail="Medication already administered")
+    med.status = cast(str, "Administered")
     event = Event(
         event_id=f"EVT-{medication_id}-MED",
         event_type="MedicationAdministered",
@@ -141,7 +145,7 @@ def administer_medication(
     return {"message": "Medication administered", "medication_id": medication_id}
 
 
-@router.put("/checkups/{patient_id}/complete")
+@router.put("/checkups/{patient_id}/complete", response_model=PatientIdResponse)
 def complete_checkup(
     patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
 ):

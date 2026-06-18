@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,7 +7,7 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, Review, User
 from app.routers import apply_pagination, apply_search, pagination_params
-from app.schemas import PrescriptionCreate, ReviewCreate
+from app.schemas import MedicationIdResponse, PatientIdResponse, PrescriptionCreate, ReviewCreate, ReviewIdResponse
 
 router = APIRouter(dependencies=[Depends(role_required("doctor", "admin"))])
 
@@ -61,10 +63,16 @@ def patient_history(
     return {"patient": patient, "events": events, "reviews": reviews, "medications": medications}
 
 
-@router.post("/prescriptions")
+@router.post("/prescriptions", response_model=MedicationIdResponse)
 def prescribe_medicine(
     data: PrescriptionCreate, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
 ):
+    patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    existing = db.query(Medication).filter(Medication.medication_id == data.medication_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Medication with this ID already exists")
     med = Medication(**data.model_dump())
     db.add(med)
     event = Event(
@@ -78,10 +86,16 @@ def prescribe_medicine(
     return {"message": "Medicine prescribed", "medication_id": data.medication_id}
 
 
-@router.post("/reviews")
+@router.post("/reviews", response_model=ReviewIdResponse)
 def submit_review(
     data: ReviewCreate, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
 ):
+    patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    existing = db.query(Review).filter(Review.review_id == data.review_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Review with this ID already exists")
     review = Review(**data.model_dump())
     db.add(review)
     event = Event(
@@ -95,14 +109,16 @@ def submit_review(
     return {"message": "Review submitted", "review_id": data.review_id}
 
 
-@router.put("/discharge/{patient_id}/approve")
+@router.put("/discharge/{patient_id}/approve", response_model=PatientIdResponse)
 def approve_discharge(
     patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    patient.status = "Discharged"
+    if patient.status != "Admitted":
+        raise HTTPException(status_code=400, detail="Patient must be admitted before discharge")
+    patient.status = cast(str, "Discharged")
     event = Event(
         event_id=f"EVT-{patient_id}-DCH",
         event_type="DischargeApproved",

@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -5,11 +7,12 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Patient, Review, User
 from app.routers import apply_pagination, apply_search, pagination_params
+from app.schemas import AdminSummaryResponse, PatientIdResponse
 
 router = APIRouter(dependencies=[Depends(role_required("admin"))])
 
 
-@router.get("/admin/summary")
+@router.get("/admin/summary", response_model=AdminSummaryResponse)
 def admin_summary(db: Session = Depends(get_db), user: User = Depends(role_required("admin"))):
     total_patients = db.query(Patient).count()
     admissions = db.query(Patient).filter(Patient.status == "Admission Requested").count()
@@ -44,12 +47,14 @@ def list_admissions(
     return apply_pagination(query, page, limit).all()
 
 
-@router.put("/admissions/{patient_id}/approve")
+@router.put("/admissions/{patient_id}/approve", response_model=PatientIdResponse)
 def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("admin"))):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    patient.status = "Admitted"
+    if patient.status != "Admission Requested":
+        raise HTTPException(status_code=400, detail="Patient has not requested admission")
+    patient.status = cast(str, "Admitted")
     event = Event(
         event_id=f"EVT-{patient_id}-ADM",
         event_type="AdmissionApproved",

@@ -1,4 +1,5 @@
 import uuid
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -30,6 +31,6 @@ def get_notifications_for_role(db: Session, role: str) -> list[Notification]:
 def mark_notification_read(db: Session, notification_id: str) -> Notification | None:
     notif = db.query(Notification).filter(Notification.notification_id == notification_id).first()
     if notif:
-        notif.status = "Read"
+        notif.status = cast(str, "Read")
         db.commit()
     return notif
