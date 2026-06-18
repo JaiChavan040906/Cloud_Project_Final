@@ -398,7 +398,7 @@ export default function Doctor() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : patientHistory ? (
-          <div className="space-y-6">
+    <div className="space-y-4">
             <div className="rounded-md bg-muted p-4">
               <h3 className="mb-2 font-medium">{patientHistory.patient.name} ({patientHistory.patient.patient_id})</h3>
               <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">

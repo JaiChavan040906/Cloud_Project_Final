@@ -186,7 +186,7 @@ export default function Nurse() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Nurse Dashboard</h1>
         <p className="text-muted-foreground">Patient care, vitals, and medication management</p>

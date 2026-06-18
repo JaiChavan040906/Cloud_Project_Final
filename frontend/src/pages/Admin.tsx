@@ -121,7 +121,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Admin Dashboard</h1>
         <p className="text-muted-foreground">
@@ -149,7 +149,7 @@ export default function Admin() {
 
       {activeTab === "overview" && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2">
             {statCards.map((stat) => (
               <StatsCard
                 key={stat.key}

@@ -169,24 +169,24 @@ export default function Receptionist() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Receptionist Dashboard</h1>
         <p className="text-muted-foreground">Patient registration, appointments, and admissions</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {quickActions.map((action) => (
           <button
             key={action.key}
             onClick={() => openModal(action.key)}
-            className="flex flex-col items-start gap-2 rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent"
+            className="flex flex-col items-start gap-3 rounded-lg border bg-card p-6 text-left transition-colors hover:bg-accent"
           >
-            <div className="rounded-md bg-primary/10 p-2 text-primary">
+            <div className="rounded-md bg-primary/10 p-3 text-primary">
               {action.icon}
             </div>
-            <div className="font-medium">{action.label}</div>
-            <div className="text-xs text-muted-foreground">{action.description}</div>
+            <div className="text-base font-medium">{action.label}</div>
+            <div className="text-sm text-muted-foreground">{action.description}</div>
           </button>
         ))}
       </div>
