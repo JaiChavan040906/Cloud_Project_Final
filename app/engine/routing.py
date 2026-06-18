@@ -10,7 +10,7 @@ EVENT_ROUTES = {
     "CriticalAlertGenerated": ["nurse", "doctor", "admin"],
     "MedicationPrescribed": ["nurse", "doctor"],
     "MedicationAdministered": ["nurse", "admin"],
-    "PatientReviewed": ["doctor", "admin"],
+    "PatientReviewed": ["doctor", "nurse", "admin"],
     "CheckupCompleted": ["nurse", "doctor"],
     "DischargeApproved": ["reception", "nurse", "admin"],
 }
