@@ -4,14 +4,27 @@ from sqlalchemy.orm import Session
 from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, User
+from app.routers import apply_pagination, apply_search, pagination_params
 from app.schemas import VitalsRecord
 
 router = APIRouter(dependencies=[Depends(role_required("nurse", "admin"))])
 
 
 @router.get("/patients/assigned")
-def assigned_patients(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
-    return db.query(Patient).filter(Patient.assigned_nurse == user.username).all()
+def assigned_patients(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Patient).filter(Patient.assigned_nurse == user.username)
+    if status:
+        query = query.filter(Patient.status == status)
+    query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
+    query = query.order_by(Patient.name.asc(), Patient.patient_id.asc())
+    return apply_pagination(query, page, limit).all()
 
 
 @router.post("/vitals")
@@ -72,13 +85,41 @@ def record_vitals(
 
 
 @router.get("/alerts")
-def get_alerts(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
-    return db.query(Alert).filter(Alert.status == "Active").all()
+def get_alerts(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Alert)
+    if status:
+        query = query.filter(Alert.status == status)
+    else:
+        query = query.filter(Alert.status == "Active")
+    query = apply_search(query, search, [Alert.patient_id, Alert.message, Alert.severity])
+    query = query.order_by(Alert.created_at.desc(), Alert.alert_id.asc())
+    return apply_pagination(query, page, limit).all()
 
 
 @router.get("/medications/queue")
-def medication_queue(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
-    return db.query(Medication).filter(Medication.status == "Prescribed").all()
+def medication_queue(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Medication)
+    if status:
+        query = query.filter(Medication.status == status)
+    else:
+        query = query.filter(Medication.status == "Prescribed")
+    query = apply_search(query, search, [Medication.medication_id, Medication.patient_id, Medication.medicine_name])
+    query = query.order_by(Medication.medicine_name.asc(), Medication.medication_id.asc())
+    return apply_pagination(query, page, limit).all()
 
 
 @router.put("/medications/{medication_id}/administer")
