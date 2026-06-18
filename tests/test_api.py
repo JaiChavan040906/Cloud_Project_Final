@@ -28,7 +28,11 @@ class TestHealth:
     def test_health_no_auth(self, client):
         r = client.get("/health")
         assert r.status_code == 200
-        assert r.json()["status"] == "ok"
+        data = r.json()
+        assert data["status"] in ("ok", "degraded")
+        assert data["db"] is True
+        assert "uptime_seconds" in data
+        assert isinstance(data["uptime_seconds"], int)
 
 
 class TestReceptionAccess:
