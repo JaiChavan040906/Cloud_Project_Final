@@ -29,10 +29,7 @@ def review_queue(
     user: User = Depends(role_required("doctor", "admin")),
 ):
     query = db.query(Review)
-    if status:
-        query = query.filter(Review.review_status == status)
-    else:
-        query = query.filter(Review.review_status == "Pending")
+    query = query.filter(Review.review_status == status) if status else query.filter(Review.review_status == "Pending")
     query = apply_search(query, search, [Review.review_id, Review.patient_id, Review.doctor_id, Review.review_note])
     query = apply_sort(
         query,
@@ -65,10 +62,7 @@ def critical_patients(
     user: User = Depends(role_required("doctor", "admin")),
 ):
     query = db.query(Alert).filter(Alert.severity == "Critical")
-    if status:
-        query = query.filter(Alert.status == status)
-    else:
-        query = query.filter(Alert.status == "Active")
+    query = query.filter(Alert.status == status) if status else query.filter(Alert.status == "Active")
     query = apply_search(query, search, [Alert.patient_id, Alert.message])
     query = apply_sort(
         query,

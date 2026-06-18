@@ -125,10 +125,7 @@ def get_alerts(
     user: User = Depends(role_required("nurse", "admin")),
 ):
     query = db.query(Alert)
-    if status:
-        query = query.filter(Alert.status == status)
-    else:
-        query = query.filter(Alert.status == "Active")
+    query = query.filter(Alert.status == status) if status else query.filter(Alert.status == "Active")
     query = apply_search(query, search, [Alert.patient_id, Alert.message, Alert.severity])
     query = apply_sort(
         query,
@@ -162,10 +159,7 @@ def medication_queue(
     user: User = Depends(role_required("nurse", "admin")),
 ):
     query = db.query(Medication)
-    if status:
-        query = query.filter(Medication.status == status)
-    else:
-        query = query.filter(Medication.status == "Prescribed")
+    query = query.filter(Medication.status == status) if status else query.filter(Medication.status == "Prescribed")
     query = apply_search(query, search, [Medication.medication_id, Medication.patient_id, Medication.medicine_name])
     query = apply_sort(
         query,

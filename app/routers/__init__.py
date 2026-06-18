@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Query as SQLAlchemyQuery
@@ -16,8 +16,8 @@ def apply_sort(
     query: SQLAlchemyQuery,
     sort_by: str | None,
     sort_order: str,
-    allowed_fields: Mapping[str, object],
-    default_fields: Sequence[object],
+    allowed_fields: Mapping[str, Any],
+    default_fields: Sequence[Any],
 ) -> SQLAlchemyQuery:
     order: Literal["asc", "desc"] = cast(Literal["asc", "desc"], sort_order)
     sort_column = allowed_fields.get(sort_by) if sort_by else None

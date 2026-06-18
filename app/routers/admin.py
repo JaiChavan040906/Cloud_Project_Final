@@ -109,10 +109,7 @@ def critical_patients(
     user: User = Depends(role_required("admin")),
 ):
     query = db.query(Alert).filter(Alert.severity == "Critical")
-    if status:
-        query = query.filter(Alert.status == status)
-    else:
-        query = query.filter(Alert.status == "Active")
+    query = query.filter(Alert.status == status) if status else query.filter(Alert.status == "Active")
     query = apply_search(query, search, [Alert.patient_id, Alert.message])
     query = apply_sort(
         query,
@@ -142,10 +139,7 @@ def all_alerts(
     user: User = Depends(role_required("admin")),
 ):
     query = db.query(Alert)
-    if status:
-        query = query.filter(Alert.status == status)
-    else:
-        query = query.filter(Alert.status == "Active")
+    query = query.filter(Alert.status == status) if status else query.filter(Alert.status == "Active")
     query = apply_search(query, search, [Alert.patient_id, Alert.message, Alert.severity])
     query = apply_sort(
         query,
