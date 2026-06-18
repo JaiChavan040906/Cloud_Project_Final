@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Outlet, useNavigate } from "react-router-dom"
+import { Outlet, useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
+import NotificationPanel from "@/components/NotificationPanel"
 import type { UserRole } from "@/types"
 import {
   LayoutDashboard,
@@ -14,7 +15,6 @@ import {
   X,
   Syringe,
   UserCheck,
-  Bell,
 } from "lucide-react"
 
 interface NavItem {
@@ -91,6 +91,7 @@ const roleLabels: Record<UserRole, string> = {
 export default function DashboardLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const filteredItems = navItems.filter(
@@ -117,16 +118,23 @@ export default function DashboardLayout() {
         </div>
 
         <div className="flex flex-1 flex-col gap-1 p-4">
-          {filteredItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => handleNav(item.path)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+          {filteredItems.map((item) => {
+            const isActive = location.pathname + location.search === item.path
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNav(item.path)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            )
+          })}
         </div>
 
         <div className="border-t p-4">
@@ -165,12 +173,7 @@ export default function DashboardLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <button className="relative rounded-full p-2 hover:bg-accent">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-                3
-              </span>
-            </button>
+            <NotificationPanel />
           </div>
         </header>
 

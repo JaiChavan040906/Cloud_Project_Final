@@ -47,13 +47,122 @@ def _get_or_create_patient(db: Session, patient_id: str, name: str = "Unknown") 
             gender="Unknown",
             department="General",
             ward="",
-            assigned_doctor="",
-            assigned_nurse="",
+            assigned_doctor="doctor",
+            assigned_nurse="nurse",
             status="Registered",
         )
         db.add(patient)
         db.flush()
     return patient
+
+
+def run_simulation_to_completion(db: Session) -> None:
+    """Process all CSV events into the database. Used by seed script."""
+    events = _load_events()
+    for step_data in events:
+        event_id = f"SIM-{step_data['step']}-{step_data['patient_id']}"
+        event = Event(
+            event_id=event_id,
+            event_type=step_data["event_type"],
+            patient_id=step_data["patient_id"],
+            description=step_data["description"],
+            status="Processed",
+        )
+        db.add(event)
+
+        event_type = step_data["event_type"]
+        patient_id = step_data["patient_id"]
+
+        if event_type == "PatientRegistered":
+            name = step_data["description"].replace("New patient ", "").replace(" registered", "")
+            _get_or_create_patient(db, patient_id, name)
+
+        elif event_type == "AppointmentCreated":
+            _get_or_create_patient(db, patient_id)
+            appointment = Appointment(
+                appointment_id=f"APT-SIM-{step_data['step']}",
+                patient_id=patient_id,
+                date="2026-06-18",
+                time="10:00",
+                status="Scheduled",
+            )
+            db.add(appointment)
+
+        elif event_type == "AdmissionRequested":
+            patient = _get_or_create_patient(db, patient_id)
+            patient.status = cast(str, "Admission Requested")
+
+        elif event_type == "AdmissionApproved":
+            patient = _get_or_create_patient(db, patient_id)
+            patient.status = cast(str, "Admitted")
+
+        elif event_type == "PatientCheckedIn":
+            patient = _get_or_create_patient(db, patient_id)
+            patient.status = cast(str, "Checked In")
+
+        elif event_type == "DischargeApproved":
+            patient = _get_or_create_patient(db, patient_id)
+            patient.status = cast(str, "Discharged")
+
+        elif event_type == "VitalsRecorded":
+            _get_or_create_patient(db, patient_id)
+            result = evaluate_vitals(115, 120, 80, 97.0, 98.6, 100.0)
+            alert = Alert(
+                alert_id=f"ALT-SIM-{uuid.uuid4().hex[:8].upper()}",
+                patient_id=patient_id,
+                severity=result["status"].capitalize(),
+                message=f"Vitals: HR 115, BP 120/80, SpO2 97%, Temp 98.6, Sugar 100 — {', '.join(result['reasons'])}",
+                status="Active",
+            )
+            db.add(alert)
+
+        elif event_type == "HighSugarDetected":
+            _get_or_create_patient(db, patient_id)
+            alert = Alert(
+                alert_id=f"ALT-SIM-{uuid.uuid4().hex[:8].upper()}",
+                patient_id=patient_id,
+                severity="Warning",
+                message="High blood sugar detected: 185 mg/dL",
+                status="Active",
+            )
+            db.add(alert)
+
+        elif event_type == "CriticalAlertGenerated":
+            _get_or_create_patient(db, patient_id)
+            alert = Alert(
+                alert_id=f"ALT-SIM-{uuid.uuid4().hex[:8].upper()}",
+                patient_id=patient_id,
+                severity="Critical",
+                message=f"CRITICAL: Heart rate 135 - Oxygen 88% — {step_data['description']}",
+                status="Active",
+            )
+            db.add(alert)
+
+        elif event_type == "MedicationPrescribed":
+            _get_or_create_patient(db, patient_id)
+            medication = Medication(
+                medication_id=f"MED-SIM-{step_data['step']}",
+                patient_id=patient_id,
+                medicine_name="Insulin",
+                prescribed_by="doctor",
+                status="Prescribed",
+            )
+            db.add(medication)
+
+        elif event_type == "PatientReviewed":
+            _get_or_create_patient(db, patient_id)
+            review_status = "Pending" if step_data["step"] % 2 == 0 else "Completed"
+            review = Review(
+                review_id=f"REV-SIM-{step_data['step']}",
+                patient_id=patient_id,
+                doctor_id="doctor",
+                review_note=step_data["description"],
+                review_status=review_status,
+            )
+            db.add(review)
+
+    db.commit()
+    sim_state["current_step"] = len(events)
 
 
 @router.get(
@@ -65,8 +174,10 @@ def _get_or_create_patient(db: Session, patient_id: str, name: str = "Unknown") 
         "This endpoint powers the simulator dashboard so users can see how far the demo has progressed."
     ),
 )
-def get_state():
-    return {"current_step": sim_state["current_step"], "total_events": len(_load_events())}
+def get_state(db: Session = Depends(get_db)):
+    processed = db.query(Event).filter(Event.event_id.like("SIM-%")).count()
+    sim_state["current_step"] = processed
+    return {"current_step": processed, "total_events": len(_load_events())}
 
 
 @router.post(
@@ -190,12 +301,13 @@ def next_event(db: Session = Depends(get_db)):
 
     elif event_type == "PatientReviewed":
         patient = _get_or_create_patient(db, patient_id)
+        review_status = "Pending" if step_data["step"] % 2 == 0 else "Completed"
         review = Review(
             review_id=f"REV-SIM-{step_data['step']}",
             patient_id=patient_id,
             doctor_id="doctor",
             review_note=step_data["description"],
-            review_status="Completed",
+            review_status=review_status,
         )
         db.add(review)
 

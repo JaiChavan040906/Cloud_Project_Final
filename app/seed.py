@@ -1,6 +1,7 @@
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import User
+from app.simulator import run_simulation_to_completion
 
 Base.metadata.create_all(bind=engine)
 
@@ -20,7 +21,13 @@ def seed():
             if not exists:
                 db.add(User(username=u["username"], password=hash_password(u["password"]), role=u["role"]))
         db.commit()
-        print("Seed completed — 4 default users inserted.")
+
+        count = db.query(User).count()
+        print(f"Seed completed — {count} users.")
+
+        print("Processing simulation events...")
+        run_simulation_to_completion(db)
+        print("Simulation events processed — all dashboards have data.")
     finally:
         db.close()
 

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "uv run fastapi dev",
+    "dev": "concurrently \"uv run uvicorn app.main:app --reload --port 8000\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "uv run fastapi dev",
     "start": "uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
     "format": "uv run ruff format .",
     "format:check": "uv run ruff format --check .",
