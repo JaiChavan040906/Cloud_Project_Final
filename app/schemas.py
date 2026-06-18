@@ -223,9 +223,10 @@ class VitalsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     db: bool
-    sqs: bool
-    s3: bool
+    sqs: bool | None = None
+    s3: bool | None = None
     uptime_seconds: int
+    errors: list[str] | None = None
 
 
 class AdminSummaryResponse(BaseModel):
