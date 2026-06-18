@@ -4,8 +4,7 @@ version = "1.0.0"
 description = "AWS-Based Hospital Event Simulation and Care Coordination System"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
+    "fastapi[standard]>=0.100.0",
     "sqlalchemy>=2.0.0",
     "pydantic>=1.10.0,<3",
     "python-jose[cryptography]>=3.3.0",
