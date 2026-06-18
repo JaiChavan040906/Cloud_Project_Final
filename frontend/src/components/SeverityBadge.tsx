@@ -5,9 +5,9 @@ interface SeverityBadgeProps {
 }
 
 const severityStyles: Record<string, string> = {
-  normal: "bg-green-100 text-green-800",
-  warning: "bg-yellow-100 text-yellow-800",
-  critical: "bg-red-100 text-red-800",
+  normal: "bg-green-900/60 text-green-300",
+  warning: "bg-yellow-900/60 text-yellow-300",
+  critical: "bg-red-900/60 text-red-300",
 }
 
 export default function SeverityBadge({ severity }: SeverityBadgeProps) {
@@ -16,7 +16,7 @@ export default function SeverityBadge({ severity }: SeverityBadgeProps) {
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        severityStyles[key] ?? "bg-gray-100 text-gray-800",
+        severityStyles[key] ?? "bg-gray-800 text-gray-300",
       )}
     >
       {severity}

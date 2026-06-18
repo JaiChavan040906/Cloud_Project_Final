@@ -3,6 +3,7 @@ import { AuthProvider } from "@/context/AuthContext"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import DashboardLayout from "@/layouts/DashboardLayout"
 import Login from "@/pages/Login"
+import Simulator from "@/pages/Simulator"
 import Admin from "@/pages/Admin"
 
 export default function App() {
@@ -10,6 +11,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/simulator" element={<Simulator />} />
           <Route path="/login" element={<Login />} />
 
           <Route path="/dashboard/:role" element={<ProtectedRoute />}>

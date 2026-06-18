@@ -31,7 +31,6 @@ export default function Admin() {
   const [summary, setSummary] = useState<AdminSummary | null>(null)
   const [approving, setApproving] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-
   const fetchSummary = useCallback(async () => {
     try {
       const res = await client.get<AdminSummary>("/api/admin/summary")
