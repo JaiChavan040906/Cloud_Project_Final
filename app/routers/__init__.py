@@ -1,12 +1,8 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Literal
 
-from fastapi import Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Query as SQLAlchemyQuery
-
-
-def pagination_params(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100)) -> tuple[int, int]:
-    return page, limit
 
 
 def apply_search(query: SQLAlchemyQuery, search: str | None, fields: Sequence) -> SQLAlchemyQuery:
@@ -16,6 +12,22 @@ def apply_search(query: SQLAlchemyQuery, search: str | None, fields: Sequence) -
     return query.filter(or_(*(field.ilike(pattern) for field in fields)))
 
 
-def apply_pagination(query: SQLAlchemyQuery, page: int, limit: int) -> SQLAlchemyQuery:
+def apply_sort(
+    query: SQLAlchemyQuery,
+    sort_by: str | None,
+    sort_order: Literal["asc", "desc"],
+    allowed_fields: Mapping[str, object],
+    default_fields: Sequence[object],
+) -> SQLAlchemyQuery:
+    sort_column = allowed_fields.get(sort_by) if sort_by else None
+    if sort_column is not None:
+        ordered_column = sort_column.desc() if sort_order == "desc" else sort_column.asc()
+        return query.order_by(ordered_column)
+    return query.order_by(*default_fields)
+
+
+def build_paginated_response(query: SQLAlchemyQuery, page: int, limit: int) -> dict[str, object]:
+    total = query.count()
     offset = (page - 1) * limit
-    return query.offset(offset).limit(limit)
+    items = query.offset(offset).limit(limit).all()
+    return {"items": items, "total": total, "page": page, "limit": limit}

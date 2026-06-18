@@ -1,12 +1,12 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
 from app.models import Appointment, Event, Patient, User
-from app.routers import apply_pagination, apply_search, pagination_params
+from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
     AppointmentCreate,
     AppointmentIdResponse,
@@ -101,19 +101,27 @@ def checkin_patient(
 
 @router.get("/admissions")
 def list_admissions(
-    status: str | None = None,
-    search: str | None = None,
-    pagination: tuple[int, int] = Depends(pagination_params),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    status: str | None = Query(None, description="Filter by status"),
+    search: str | None = Query(None, description="Search by patient ID, name, or department"),
+    sort_by: str | None = Query(None, description="Field to sort by"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     db: Session = Depends(get_db),
     user: User = Depends(role_required("reception", "admin")),
 ):
-    page, limit = pagination
     query = db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"]))
     if status:
         query = query.filter(Patient.status == status)
     query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
-    query = query.order_by(Patient.name.asc(), Patient.patient_id.asc())
-    return apply_pagination(query, page, limit).all()
+    query = apply_sort(
+        query,
+        sort_by,
+        sort_order,
+        {"patient_id": Patient.patient_id, "name": Patient.name, "department": Patient.department, "status": Patient.status},
+        [Patient.name.asc(), Patient.patient_id.asc()],
+    )
+    return build_paginated_response(query, page, limit)
 
 
 # ─── List Appointments ──────────────────────────────────────────────────────
@@ -121,33 +129,58 @@ def list_admissions(
 
 @router.get("/appointments")
 def list_appointments(
-    status: str | None = None,
-    search: str | None = None,
-    pagination: tuple[int, int] = Depends(pagination_params),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    status: str | None = Query(None, description="Filter by status"),
+    search: str | None = Query(None, description="Search by appointment or patient ID"),
+    sort_by: str | None = Query(None, description="Field to sort by"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     db: Session = Depends(get_db),
     user: User = Depends(role_required("reception", "admin")),
 ):
-    page, limit = pagination
     query = db.query(Appointment)
     if status:
         query = query.filter(Appointment.status == status)
     query = apply_search(query, search, [Appointment.appointment_id, Appointment.patient_id])
-    query = query.order_by(Appointment.date.asc(), Appointment.time.asc(), Appointment.appointment_id.asc())
-    return apply_pagination(query, page, limit).all()
+    query = apply_sort(
+        query,
+        sort_by,
+        sort_order,
+        {
+            "appointment_id": Appointment.appointment_id,
+            "patient_id": Appointment.patient_id,
+            "date": Appointment.date,
+            "time": Appointment.time,
+            "status": Appointment.status,
+        },
+        [Appointment.date.asc(), Appointment.time.asc(), Appointment.appointment_id.asc()],
+    )
+    return build_paginated_response(query, page, limit)
 
 
 @router.get("/patients")
 def get_patients(
-    status: str | None = None,
-    search: str | None = None,
-    pagination: tuple[int, int] = Depends(pagination_params),
+    search: str | None = Query(None, description="Search by name, patient ID, or department"),
+    status: str | None = Query(None, description="Filter by status"),
+    department: str | None = Query(None, description="Filter by department"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    sort_by: str | None = Query(None, description="Field to sort by"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort direction"),
     db: Session = Depends(get_db),
     user: User = Depends(role_required("reception", "nurse", "doctor", "admin")),
 ):
-    page, limit = pagination
     query = db.query(Patient)
     if status:
         query = query.filter(Patient.status == status)
+    if department:
+        query = query.filter(Patient.department == department)
     query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
-    query = query.order_by(Patient.name.asc(), Patient.patient_id.asc())
-    return apply_pagination(query, page, limit).all()
+    query = apply_sort(
+        query,
+        sort_by,
+        sort_order,
+        {"patient_id": Patient.patient_id, "name": Patient.name, "department": Patient.department, "status": Patient.status},
+        [Patient.name.asc(), Patient.patient_id.asc()],
+    )
+    return build_paginated_response(query, page, limit)
