@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
+import { useState, useEffect, useMemo, type ReactNode } from "react"
 import client from "@/api/client"
 import { useDebounce } from "@/hooks/useDebounce"
 import { Input } from "@/components/ui/input"
@@ -71,38 +71,42 @@ export default function PaginatedTable<T = any>({
   const debouncedSearch = useDebounce(search, 300)
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
+    let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    try {
-      const params: Record<string, string | number> = {
-        page,
-        limit: pageSize,
-        ...stableExtraParams,
-      }
-      if (debouncedSearch) params.search = debouncedSearch
-      if (status) params.status = status
-      if (sortBy) {
-        params.sort_by = sortBy
-        params.sort_order = sortOrder
-      }
-      const res = await client.get<PageResponse<T>>(endpoint, { params })
-      setData(res.data.items)
-      setTotal(res.data.total)
-    } catch {
-      setData([])
-      setTotal(0)
-    } finally {
-      setLoading(false)
+
+    const params: Record<string, string | number> = {
+      page,
+      limit: pageSize,
+      ...stableExtraParams,
     }
+    if (debouncedSearch) params.search = debouncedSearch
+    if (status) params.status = status
+    if (sortBy) {
+      params.sort_by = sortBy
+      params.sort_order = sortOrder
+    }
+
+    client.get<PageResponse<T>>(endpoint, { params })
+      .then((res) => {
+        if (!cancelled) {
+          setData(res.data.items)
+          setTotal(res.data.total)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setData([])
+          setTotal(0)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => { cancelled = true }
   }, [endpoint, page, pageSize, debouncedSearch, status, sortBy, sortOrder, stableExtraParams])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch, status])
 
   function handleSort(key: string) {
     if (sortBy === key) {
@@ -119,11 +123,17 @@ export default function PaginatedTable<T = any>({
         <Input
           placeholder={searchPlaceholder}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(1)
+          }}
           className="max-w-sm"
         />
         {statusFilter && statusOptions.length > 0 && (
-          <Select value={status} onValueChange={setStatus}>
+          <Select value={status} onValueChange={(v) => {
+            setStatus(v)
+            setPage(1)
+          }}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
