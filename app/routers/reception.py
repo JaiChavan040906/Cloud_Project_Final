@@ -13,7 +13,13 @@ from app.schemas import (
     PatientRegister,
 )
 
+# All endpoints require reception or admin role
 router = APIRouter(dependencies=[Depends(role_required("reception", "admin"))])
+
+
+# ─── Register Patient ───────────────────────────────────────────────────────
+# Creates a new patient record and emits a PatientRegistered event.
+# Returns 400 if a patient with the same patient_id already exists.
 
 
 @router.post("/patients/register", response_model=PatientIdResponse)
@@ -34,6 +40,11 @@ def register_patient(
     db.add(event)
     db.commit()
     return {"message": "Patient registered", "patient_id": data.patient_id}
+
+
+# ─── Create Appointment ─────────────────────────────────────────────────────
+# Creates an appointment for an existing patient.
+# Returns 404 if patient does not exist, 400 if appointment_id is a duplicate.
 
 
 @router.post("/appointments", response_model=AppointmentIdResponse)
@@ -59,6 +70,10 @@ def create_appointment(
     return {"message": "Appointment created", "appointment_id": data.appointment_id}
 
 
+# ─── Check In Patient ───────────────────────────────────────────────────────
+# Marks a patient as checked in. Returns 404 if not found, 400 if already done.
+
+
 @router.post("/patients/{patient_id}/checkin", response_model=PatientIdResponse)
 def checkin_patient(
     patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
@@ -80,9 +95,16 @@ def checkin_patient(
     return {"message": "Patient checked in", "patient_id": patient_id}
 
 
+# ─── List Admissions ────────────────────────────────────────────────────────
+# Returns all patients whose status is either "Admission Requested" or "Admitted".
+
+
 @router.get("/admissions")
 def list_admissions(db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))):
     return db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"])).all()
+
+
+# ─── List Appointments ──────────────────────────────────────────────────────
 
 
 @router.get("/appointments")

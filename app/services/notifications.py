@@ -7,6 +7,7 @@ from app.models import Notification
 
 
 def create_notification(db: Session, recipient_role: str, message: str) -> Notification:
+    """Create an unread notification targeted at a specific role."""
     notif = Notification(
         notification_id=f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
         recipient_role=recipient_role,
@@ -20,6 +21,7 @@ def create_notification(db: Session, recipient_role: str, message: str) -> Notif
 
 
 def get_notifications_for_role(db: Session, role: str) -> list[Notification]:
+    """Fetch all unread notifications for a given role, newest first."""
     return (
         db.query(Notification)
         .filter(Notification.recipient_role == role, Notification.status == "Unread")
@@ -29,6 +31,7 @@ def get_notifications_for_role(db: Session, role: str) -> list[Notification]:
 
 
 def mark_notification_read(db: Session, notification_id: str) -> Notification | None:
+    """Mark a single notification as Read by its notification_id."""
     notif = db.query(Notification).filter(Notification.notification_id == notification_id).first()
     if notif:
         notif.status = cast(str, "Read")

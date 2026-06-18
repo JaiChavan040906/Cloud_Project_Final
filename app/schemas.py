@@ -1,5 +1,7 @@
 from pydantic import BaseModel, field_validator
 
+# ─── Auth ───────────────────────────────────────────────────────────────────
+
 
 class LoginRequest(BaseModel):
     username: str
@@ -11,6 +13,9 @@ class TokenResponse(BaseModel):
     token_type: str
     role: str
     username: str
+
+
+# ─── Receptionist Request Models ────────────────────────────────────────────
 
 
 class PatientRegister(BaseModel):
@@ -27,6 +32,11 @@ class AppointmentCreate(BaseModel):
     patient_id: str
     date: str
     time: str
+
+
+# ─── Vitals Request with Range Validation ───────────────────────────────────
+# All vitals fields have field_validator decorators that reject out-of-range
+# values before the request reaches the router handler.
 
 
 class VitalsRecord(BaseModel):
@@ -81,6 +91,9 @@ class VitalsRecord(BaseModel):
         return v
 
 
+# ─── Doctor Request Models ──────────────────────────────────────────────────
+
+
 class PrescriptionCreate(BaseModel):
     medication_id: str
     patient_id: str
@@ -100,11 +113,19 @@ class AdmissionApprove(BaseModel):
     patient_id: str
 
 
+# ─── Simulator ──────────────────────────────────────────────────────────────
+
+
 class SimulatorEvent(BaseModel):
     step: int
     event_type: str
     patient_id: str
     description: str
+
+
+# ─── Standard Response Models ───────────────────────────────────────────────
+# Every endpoint uses one of these as its response_model so Swagger/OpenAPI
+# documents the exact return shape and clients know what to expect.
 
 
 class MessageResponse(BaseModel):

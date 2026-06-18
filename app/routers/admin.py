@@ -8,7 +8,13 @@ from app.database import get_db
 from app.models import Alert, Event, Patient, Review, User
 from app.schemas import AdminSummaryResponse, PatientIdResponse
 
+# All endpoints require admin role only
 router = APIRouter(dependencies=[Depends(role_required("admin"))])
+
+
+# ─── Hospital Summary ───────────────────────────────────────────────────────
+# Returns aggregate counts used by the admin dashboard — total patients,
+# pending admissions, admitted count, critical alerts, pending reviews.
 
 
 @router.get("/admin/summary", response_model=AdminSummaryResponse)
@@ -29,9 +35,18 @@ def admin_summary(db: Session = Depends(get_db), user: User = Depends(role_requi
     }
 
 
+# ─── Pending Admissions ─────────────────────────────────────────────────────
+
+
 @router.get("/admin/admissions")
 def list_admissions(db: Session = Depends(get_db), user: User = Depends(role_required("admin"))):
     return db.query(Patient).filter(Patient.status == "Admission Requested").all()
+
+
+# ─── Approve Admission ──────────────────────────────────────────────────────
+# Transitions a patient from "Admission Requested" to "Admitted".
+# Validates that the patient exists and is actually requesting admission.
+# Emits an AdmissionApproved event.
 
 
 @router.put("/admissions/{patient_id}/approve", response_model=PatientIdResponse)
@@ -51,6 +66,9 @@ def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User
     db.add(event)
     db.commit()
     return {"message": "Admission approved", "patient_id": patient_id}
+
+
+# ─── Critical & Active Alerts ───────────────────────────────────────────────
 
 
 @router.get("/admin/critical")

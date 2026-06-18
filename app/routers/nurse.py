@@ -8,12 +8,23 @@ from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, User
 from app.schemas import MedicationIdResponse, PatientIdResponse, VitalsRecord, VitalsResponse
 
+# All endpoints require nurse or admin role
 router = APIRouter(dependencies=[Depends(role_required("nurse", "admin"))])
+
+
+# ─── Assigned Patients ──────────────────────────────────────────────────────
+# Returns patients where assigned_nurse matches the logged-in nurse's username.
 
 
 @router.get("/patients/assigned")
 def assigned_patients(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
     return db.query(Patient).filter(Patient.assigned_nurse == user.username).all()
+
+
+# ─── Record Vitals ──────────────────────────────────────────────────────────
+# Validates the patient exists, then evaluates heart rate / SpO2 / temp /
+# blood sugar against thresholds. Returns severity (Normal / Warning / Critical)
+# with a list of abnormal findings. Creates alerts for abnormal readings.
 
 
 @router.post("/vitals", response_model=VitalsResponse)
@@ -73,14 +84,26 @@ def record_vitals(
     return {"severity": severity, "reasons": reasons}
 
 
+# ─── Active Alerts ──────────────────────────────────────────────────────────
+
+
 @router.get("/alerts")
 def get_alerts(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
     return db.query(Alert).filter(Alert.status == "Active").all()
 
 
+# ─── Medication Queue ───────────────────────────────────────────────────────
+# Returns all medications with status "Prescribed" (not yet administered).
+
+
 @router.get("/medications/queue")
 def medication_queue(db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))):
     return db.query(Medication).filter(Medication.status == "Prescribed").all()
+
+
+# ─── Administer Medication ──────────────────────────────────────────────────
+# Marks a medication as Administered. Validates existence and prevents
+# double-administration. Emits a MedicationAdministered event.
 
 
 @router.put("/medications/{medication_id}/administer", response_model=MedicationIdResponse)
@@ -102,6 +125,10 @@ def administer_medication(
     db.add(event)
     db.commit()
     return {"message": "Medication administered", "medication_id": medication_id}
+
+
+# ─── Complete Checkup ───────────────────────────────────────────────────────
+# Logs that a nurse completed a checkup for a patient.
 
 
 @router.put("/checkups/{patient_id}/complete", response_model=PatientIdResponse)

@@ -8,7 +8,12 @@ from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, Review, User
 from app.schemas import MedicationIdResponse, PatientIdResponse, PrescriptionCreate, ReviewCreate, ReviewIdResponse
 
+# All endpoints require doctor or admin role
 router = APIRouter(dependencies=[Depends(role_required("doctor", "admin"))])
+
+
+# ─── Review Queue ───────────────────────────────────────────────────────────
+# Returns all reviews with status "Pending" awaiting doctor action.
 
 
 @router.get("/reviews/queue")
@@ -16,9 +21,17 @@ def review_queue(db: Session = Depends(get_db), user: User = Depends(role_requir
     return db.query(Review).filter(Review.review_status == "Pending").all()
 
 
+# ─── Critical Patients ──────────────────────────────────────────────────────
+# Returns all active alerts with Critical severity.
+
+
 @router.get("/patients/critical")
 def critical_patients(db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))):
     return db.query(Alert).filter(Alert.severity == "Critical", Alert.status == "Active").all()
+
+
+# ─── Patient History ────────────────────────────────────────────────────────
+# Returns full patient record plus all related events, reviews, and medications.
 
 
 @router.get("/patients/{patient_id}/history")
@@ -32,6 +45,11 @@ def patient_history(
     reviews = db.query(Review).filter(Review.patient_id == patient_id).all()
     medications = db.query(Medication).filter(Medication.patient_id == patient_id).all()
     return {"patient": patient, "events": events, "reviews": reviews, "medications": medications}
+
+
+# ─── Prescribe Medication ───────────────────────────────────────────────────
+# Validates patient exists, checks for duplicate medication_id, then creates
+# a Medication record with status "Prescribed". Emits MedicationPrescribed event.
 
 
 @router.post("/prescriptions", response_model=MedicationIdResponse)
@@ -57,6 +75,11 @@ def prescribe_medicine(
     return {"message": "Medicine prescribed", "medication_id": data.medication_id}
 
 
+# ─── Submit Review ──────────────────────────────────────────────────────────
+# Validates patient exists, checks for duplicate review_id, then creates a
+# review record. Emits PatientReviewed event.
+
+
 @router.post("/reviews", response_model=ReviewIdResponse)
 def submit_review(
     data: ReviewCreate, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
@@ -78,6 +101,11 @@ def submit_review(
     db.add(event)
     db.commit()
     return {"message": "Review submitted", "review_id": data.review_id}
+
+
+# ─── Approve Discharge ──────────────────────────────────────────────────────
+# Validates patient exists and is admitted. Transitions to "Discharged".
+# Emits DischargeApproved event.
 
 
 @router.put("/discharge/{patient_id}/approve", response_model=PatientIdResponse)
