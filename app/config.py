@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./hospital.db")
 JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-key")
 JWT_ALGORITHM = "HS256"
