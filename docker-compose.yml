@@ -1,21 +1,50 @@
-version: "3.9"
-
 services:
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./hospital.db
-      - JWT_SECRET=super-secret-key
+      - DATABASE_URL=sqlite:///./data/hospital.db
+      - JWT_SECRET=dev-secret
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_MINUTES=60
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=fake
+      - AWS_SECRET_ACCESS_KEY=fake
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/hospital-events
+      - S3_BUCKET_NAME=hospital-events
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - LOG_LEVEL=INFO
+    depends_on:
+      localstack:
+        condition: service_healthy
     volumes:
-      - ./hospital.db:/app/hospital.db
-      - ./data:/app/data
+      - hospital_data:/app/data
 
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.8.1
     ports:
       - "4566:4566"
+      - "4510-4559:4510-4559"
     environment:
       - SERVICES=sqs,s3
       - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=fake
+      - AWS_SECRET_ACCESS_KEY=fake
+      - EDGE_PORT=4566
+      - PERSISTENCE=1
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./deploy/init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  hospital_data:
+  localstack_data:
