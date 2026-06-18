@@ -10,6 +10,8 @@ from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
     AppointmentCreate,
     AppointmentIdResponse,
+    PaginatedAppointmentsResponse,
+    PaginatedPatientsResponse,
     PatientIdResponse,
     PatientRegister,
 )
@@ -17,14 +19,19 @@ from app.schemas import (
 router = APIRouter()
 
 
-# ─── Register Patient ───────────────────────────────────────────────────────
-# Creates a new patient record and emits a PatientRegistered event.
-# Returns 400 if a patient with the same patient_id already exists.
-
-
-@router.post("/patients/register", response_model=PatientIdResponse)
+@router.post(
+    "/patients/register",
+    response_model=PatientIdResponse,
+    summary="Register a New Patient",
+    description=(
+        "Create a new patient record in the system. This endpoint is available to Receptionist and Admin roles "
+        "and also emits a PatientRegistered event for downstream hospital workflow tracking."
+    ),
+)
 def register_patient(
-    data: PatientRegister, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
+    data: PatientRegister,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
 ):
     existing = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if existing:
@@ -42,14 +49,19 @@ def register_patient(
     return {"message": "Patient registered", "patient_id": data.patient_id}
 
 
-# ─── Create Appointment ─────────────────────────────────────────────────────
-# Creates an appointment for an existing patient.
-# Returns 404 if patient does not exist, 400 if appointment_id is a duplicate.
-
-
-@router.post("/appointments", response_model=AppointmentIdResponse)
+@router.post(
+    "/appointments",
+    response_model=AppointmentIdResponse,
+    summary="Create an Appointment",
+    description=(
+        "Create an appointment for an existing patient. This endpoint is available to Receptionist and Admin roles "
+        "and emits an AppointmentCreated event so other dashboards can react to the booking."
+    ),
+)
 def create_appointment(
-    data: AppointmentCreate, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
+    data: AppointmentCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if not patient:
@@ -70,13 +82,19 @@ def create_appointment(
     return {"message": "Appointment created", "appointment_id": data.appointment_id}
 
 
-# ─── Check In Patient ───────────────────────────────────────────────────────
-# Marks a patient as checked in. Returns 404 if not found, 400 if already done.
-
-
-@router.post("/patients/{patient_id}/checkin", response_model=PatientIdResponse)
+@router.post(
+    "/patients/{patient_id}/checkin",
+    response_model=PatientIdResponse,
+    summary="Check In a Patient",
+    description=(
+        "Mark an existing patient as checked in at the reception desk. This endpoint is available to Receptionist "
+        "and Admin roles and emits a PatientCheckedIn event for the care workflow."
+    ),
+)
 def checkin_patient(
-    patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))
+    patient_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
@@ -95,11 +113,15 @@ def checkin_patient(
     return {"message": "Patient checked in", "patient_id": patient_id}
 
 
-# ─── List Admissions ────────────────────────────────────────────────────────
-# Returns all patients whose status is either "Admission Requested" or "Admitted".
-
-
-@router.get("/admissions")
+@router.get(
+    "/admissions",
+    response_model=PaginatedPatientsResponse,
+    summary="List Admission Requests",
+    description=(
+        "List patients in the admission workflow for Receptionist and Admin roles. Results support filtering, "
+        "searching, sorting, and pagination so the front desk can manage admission and check-in traffic efficiently."
+    ),
+)
 def list_admissions(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -129,10 +151,15 @@ def list_admissions(
     return build_paginated_response(query, page, limit)
 
 
-# ─── List Appointments ──────────────────────────────────────────────────────
-
-
-@router.get("/appointments")
+@router.get(
+    "/appointments",
+    response_model=PaginatedAppointmentsResponse,
+    summary="List All Appointments",
+    description=(
+        "Return a paginated appointment list for Receptionist and Admin roles. The response supports filtering, "
+        "searching, and sorting so staff can review the appointment book in the Swagger UI and in the frontend."
+    ),
+)
 def list_appointments(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -163,7 +190,15 @@ def list_appointments(
     return build_paginated_response(query, page, limit)
 
 
-@router.get("/patients")
+@router.get(
+    "/patients",
+    response_model=PaginatedPatientsResponse,
+    summary="Search Patients",
+    description=(
+        "Search the shared patient directory across roles with optional status, department, sorting, and pagination "
+        "filters. This endpoint is accessible to Receptionist, Nurse, Doctor, and Admin roles."
+    ),
+)
 def get_patients(
     search: str | None = Query(None, description="Search by name, patient ID, or department"),
     status: str | None = Query(None, description="Filter by status"),
