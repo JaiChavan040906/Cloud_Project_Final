@@ -47,6 +47,11 @@ export default function Admin() {
     return () => clearInterval(interval)
   }, [fetchSummary])
 
+  useEffect(() => {
+    const interval = setInterval(() => setRefreshKey((k) => k + 1), 15000)
+    return () => clearInterval(interval)
+  }, [])
+
   async function handleApprove(patientId: string) {
     setApproving(patientId)
     try {

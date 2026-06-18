@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Activity, ChevronLeft, ChevronRight, RotateCcw, LogIn } from "lucide-react"
+import { Activity, ChevronRight, RotateCcw, LogIn } from "lucide-react"
 
 export default function Simulator() {
   const [state, setState] = useState<SimulatorState | null>(null)
@@ -34,31 +34,6 @@ export default function Simulator() {
       setState(stateRes.data)
     } catch (err: unknown) {
       let msg = "Failed to process event"
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { status?: number; data?: unknown } }
-        const data = axiosErr.response?.data
-        if (typeof data === "object" && data && "detail" in data) {
-          msg = String((data as Record<string, unknown>).detail)
-        } else if (typeof data === "string") {
-          msg = data
-        }
-      }
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handlePrevious() {
-    setLoading(true)
-    setError("")
-    try {
-      const res = await client.post<SimulatorNext>("/api/simulator/previous")
-      setLastEvent(res.data)
-      const stateRes = await client.get<SimulatorState>("/api/simulator/state")
-      setState(stateRes.data)
-    } catch (err: unknown) {
-      let msg = "Failed to undo event"
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { status?: number; data?: unknown } }
         const data = axiosErr.response?.data
@@ -124,14 +99,6 @@ export default function Simulator() {
           </div>
 
           <div className="flex gap-3">
-            <Button
-              onClick={handlePrevious}
-              disabled={loading || !state || state.current_step <= 0}
-              variant="outline"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </Button>
             <Button
               onClick={handleNext}
               disabled={loading || isComplete}

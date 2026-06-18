@@ -5,6 +5,7 @@ import DashboardLayout from "@/layouts/DashboardLayout"
 import Login from "@/pages/Login"
 import Simulator from "@/pages/Simulator"
 import Admin from "@/pages/Admin"
+import Receptionist from "@/pages/Receptionist"
 
 export default function App() {
   return (
@@ -33,6 +34,8 @@ function DashboardRouter() {
   switch (role) {
     case "admin":
       return <Admin />
+    case "reception":
+      return <Receptionist />
     default:
       return (
         <div className="flex items-center justify-center py-16">
