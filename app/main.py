@@ -1,10 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from app.database import engine, Base, get_db
+
 from app.auth import create_access_token, verify_password
+from app.database import Base, engine, get_db
 from app.models import User
+from app.routers import admin, doctor, nurse, reception
 from app.schemas import LoginRequest
+from app.services import notifications as notif_service
+from app.simulator import router as simulator_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,7 +31,7 @@ def health():
 @app.post("/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
-    if not user or not verify_password(req.password, user.password):
+    if not user or not verify_password(req.password, user.password):  # type: ignore[arg-type]
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.username, "role": user.role})
     return {
@@ -37,10 +41,6 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         "username": user.username,
     }
 
-
-from app.routers import reception, admin, nurse, doctor
-from app.services import notifications as notif_service
-from app.simulator import router as simulator_router
 
 app.include_router(reception.router, prefix="/api", tags=["Receptionist"])
 app.include_router(admin.router, prefix="/api", tags=["Admin"])

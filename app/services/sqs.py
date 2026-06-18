@@ -1,7 +1,9 @@
 import json
+
 import boto3
 from botocore.config import Config
-from app.config import AWS_REGION, SQS_QUEUE_URL, AWS_ENDPOINT_URL
+
+from app.config import AWS_ENDPOINT_URL, AWS_REGION, SQS_QUEUE_URL
 
 
 def _get_client():

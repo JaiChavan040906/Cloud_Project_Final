@@ -1,2 +1,2 @@
-boto3==1.29.3
-sqlalchemy==2.0.23
+boto3>=1.28.0
+sqlalchemy>=2.0.0

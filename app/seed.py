@@ -1,6 +1,6 @@
-from app.database import engine, Base, SessionLocal
-from app.models import User
 from app.auth import hash_password
+from app.database import Base, SessionLocal, engine
+from app.models import User
 
 Base.metadata.create_all(bind=engine)
 

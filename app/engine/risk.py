@@ -1,4 +1,5 @@
-THRESHOLDS = {
+ThresholdRange = dict[str, int | float]
+THRESHOLDS: dict[str, ThresholdRange] = {
     "heart_rate": {"low": 60, "high": 100},
     "spo2": {"low": 95, "high": 100},
     "temperature": {"low": 97.0, "high": 100.4},

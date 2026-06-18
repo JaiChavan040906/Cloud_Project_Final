@@ -1,5 +1,7 @@
 import uuid
+
 from sqlalchemy.orm import Session
+
 from app.models import Notification
 
 
@@ -17,7 +19,12 @@ def create_notification(db: Session, recipient_role: str, message: str) -> Notif
 
 
 def get_notifications_for_role(db: Session, role: str) -> list[Notification]:
-    return db.query(Notification).filter(Notification.recipient_role == role, Notification.status == "Unread").order_by(Notification.created_at.desc()).all()
+    return (
+        db.query(Notification)
+        .filter(Notification.recipient_role == role, Notification.status == "Unread")
+        .order_by(Notification.created_at.desc())
+        .all()
+    )
 
 
 def mark_notification_read(db: Session, notification_id: str) -> Notification | None:

@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.database import get_db
+
 from app.auth import role_required
-from app.models import Patient, Event, Alert, Review, User
-from app.schemas import AdmissionApprove
+from app.database import get_db
+from app.models import Alert, Event, Patient, Review, User
 
 router = APIRouter(dependencies=[Depends(role_required("admin"))])
 
@@ -37,7 +37,12 @@ def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     patient.status = "Admitted"
-    event = Event(event_id=f"EVT-{patient_id}-ADM", event_type="AdmissionApproved", patient_id=patient_id, description="Admission approved")
+    event = Event(
+        event_id=f"EVT-{patient_id}-ADM",
+        event_type="AdmissionApproved",
+        patient_id=patient_id,
+        description="Admission approved",
+    )
     db.add(event)
     db.commit()
     return {"message": "Admission approved", "patient_id": patient_id}

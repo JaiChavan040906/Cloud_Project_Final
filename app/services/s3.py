@@ -1,6 +1,7 @@
 import boto3
 from botocore.config import Config
-from app.config import AWS_REGION, S3_BUCKET_NAME, AWS_ENDPOINT_URL
+
+from app.config import AWS_ENDPOINT_URL, AWS_REGION, S3_BUCKET_NAME
 
 
 def _get_client():

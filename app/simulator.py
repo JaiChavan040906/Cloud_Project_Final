@@ -1,12 +1,14 @@
 import csv
 import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app.models import Event, Notification
 from app.engine.routing import get_recipients
-from app.services.sqs import send_to_sqs
+from app.models import Event, Notification
 from app.services.notifications import create_notification
+from app.services.sqs import send_to_sqs
 
 router = APIRouter(tags=["Simulator"])
 
@@ -20,7 +22,15 @@ def _load_events():
         return []
     with open(CSV_PATH) as f:
         reader = csv.DictReader(f)
-        return [{"step": int(r["step"]), "event_type": r["event_type"], "patient_id": r["patient_id"], "description": r["description"]} for r in reader]
+        return [
+            {
+                "step": int(r["step"]),
+                "event_type": r["event_type"],
+                "patient_id": r["patient_id"],
+                "description": r["description"],
+            }
+            for r in reader
+        ]
 
 
 @router.get("/simulator/state")

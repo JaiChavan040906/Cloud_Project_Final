@@ -1,0 +1,42 @@
+[project]
+name = "hospital-event-simulation"
+version = "1.0.0"
+description = "AWS-Based Hospital Event Simulation and Care Coordination System"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "sqlalchemy>=2.0.0",
+    "pydantic>=1.10.0,<3",
+    "python-jose[cryptography]>=3.3.0",
+    "bcrypt>=4.0.0,<5",
+    "python-multipart>=0.0.6",
+    "boto3>=1.28.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/hospital-event-simulation"
+
+[dependency-groups]
+dev = ["ruff>=0.6.0", "mypy>=1.11.0"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+exclude = ["lambda/"]
+plugins = ["sqlalchemy.ext.mypy.plugin"]

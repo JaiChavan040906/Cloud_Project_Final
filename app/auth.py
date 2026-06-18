@@ -1,23 +1,24 @@
 from datetime import datetime, timedelta
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
+import bcrypt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from app.config import JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRATION_MINUTES
+
+from app.config import JWT_ALGORITHM, JWT_EXPIRATION_MINUTES, JWT_SECRET
 from app.database import get_db
 from app.models import User
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(data: dict) -> str:
@@ -38,7 +39,7 @@ def get_current_user(
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token") from None
 
     user = db.query(User).filter(User.username == username).first()
     if user is None:
@@ -54,4 +55,5 @@ def role_required(*allowed_roles: str):
                 detail=f"Role '{user.role}' not authorized",
             )
         return user
+
     return checker
