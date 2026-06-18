@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import role_required
 from app.database import get_db
 from app.models import Appointment, Event, Patient, User
+from app.routers import apply_pagination, apply_search, pagination_params
 from app.schemas import (
     AppointmentCreate,
     AppointmentIdResponse,
@@ -13,8 +14,7 @@ from app.schemas import (
     PatientRegister,
 )
 
-# All endpoints require reception or admin role
-router = APIRouter(dependencies=[Depends(role_required("reception", "admin"))])
+router = APIRouter()
 
 
 # ─── Register Patient ───────────────────────────────────────────────────────
@@ -100,13 +100,54 @@ def checkin_patient(
 
 
 @router.get("/admissions")
-def list_admissions(db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))):
-    return db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"])).all()
+def list_admissions(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Patient).filter(Patient.status.in_(["Admission Requested", "Admitted"]))
+    if status:
+        query = query.filter(Patient.status == status)
+    query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
+    query = query.order_by(Patient.name.asc(), Patient.patient_id.asc())
+    return apply_pagination(query, page, limit).all()
 
 
 # ─── List Appointments ──────────────────────────────────────────────────────
 
 
 @router.get("/appointments")
-def list_appointments(db: Session = Depends(get_db), user: User = Depends(role_required("reception", "admin"))):
-    return db.query(Appointment).all()
+def list_appointments(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Appointment)
+    if status:
+        query = query.filter(Appointment.status == status)
+    query = apply_search(query, search, [Appointment.appointment_id, Appointment.patient_id])
+    query = query.order_by(Appointment.date.asc(), Appointment.time.asc(), Appointment.appointment_id.asc())
+    return apply_pagination(query, page, limit).all()
+
+
+@router.get("/patients")
+def get_patients(
+    status: str | None = None,
+    search: str | None = None,
+    pagination: tuple[int, int] = Depends(pagination_params),
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("reception", "nurse", "doctor", "admin")),
+):
+    page, limit = pagination
+    query = db.query(Patient)
+    if status:
+        query = query.filter(Patient.status == status)
+    query = apply_search(query, search, [Patient.patient_id, Patient.name, Patient.department])
+    query = query.order_by(Patient.name.asc(), Patient.patient_id.asc())
+    return apply_pagination(query, page, limit).all()
