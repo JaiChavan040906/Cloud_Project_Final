@@ -7,18 +7,20 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Patient, Review, User
 from app.routers import apply_search, apply_sort, build_paginated_response
-from app.schemas import AdminSummaryResponse, PatientIdResponse
+from app.schemas import AdminSummaryResponse, PaginatedAlertsResponse, PaginatedPatientsResponse, PatientIdResponse
 
-# All endpoints require admin role only
 router = APIRouter(dependencies=[Depends(role_required("admin"))])
 
 
-# ─── Hospital Summary ───────────────────────────────────────────────────────
-# Returns aggregate counts used by the admin dashboard — total patients,
-# pending admissions, admitted count, critical alerts, pending reviews.
-
-
-@router.get("/admin/summary", response_model=AdminSummaryResponse)
+@router.get(
+    "/admin/summary",
+    response_model=AdminSummaryResponse,
+    summary="Get Hospital Summary",
+    description=(
+        "Return aggregated hospital metrics for the Admin dashboard, including patient totals, admissions, active "
+        "alerts, and pending reviews. This endpoint is restricted to the Admin role."
+    ),
+)
 def admin_summary(db: Session = Depends(get_db), user: User = Depends(role_required("admin"))):
     total_patients = db.query(Patient).count()
     admissions = db.query(Patient).filter(Patient.status == "Admission Requested").count()
@@ -36,10 +38,15 @@ def admin_summary(db: Session = Depends(get_db), user: User = Depends(role_requi
     }
 
 
-# ─── Pending Admissions ─────────────────────────────────────────────────────
-
-
-@router.get("/admin/admissions")
+@router.get(
+    "/admin/admissions",
+    response_model=PaginatedPatientsResponse,
+    summary="List Pending Admissions",
+    description=(
+        "Return a paginated list of admission requests for the Admin role. Results can be filtered, searched, and "
+        "sorted to help hospital administrators review and manage incoming admissions."
+    ),
+)
 def list_admissions(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -69,13 +76,15 @@ def list_admissions(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Approve Admission ──────────────────────────────────────────────────────
-# Transitions a patient from "Admission Requested" to "Admitted".
-# Validates that the patient exists and is actually requesting admission.
-# Emits an AdmissionApproved event.
-
-
-@router.put("/admissions/{patient_id}/approve", response_model=PatientIdResponse)
+@router.put(
+    "/admissions/{patient_id}/approve",
+    response_model=PatientIdResponse,
+    summary="Approve Admission",
+    description=(
+        "Approve a patient admission request and transition the patient into the admitted state. This endpoint is "
+        "restricted to Admin users and emits an AdmissionApproved event for downstream dashboards."
+    ),
+)
 def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("admin"))):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
@@ -94,10 +103,15 @@ def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User
     return {"message": "Admission approved", "patient_id": patient_id}
 
 
-# ─── Critical & Active Alerts ───────────────────────────────────────────────
-
-
-@router.get("/admin/critical")
+@router.get(
+    "/admin/critical",
+    response_model=PaginatedAlertsResponse,
+    summary="List Critical Alerts",
+    description=(
+        "Return critical patient alerts for the Admin role with optional filtering, searching, sorting, and "
+        "pagination. This helps administrators monitor severe events that may require escalation."
+    ),
+)
 def critical_patients(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -127,7 +141,15 @@ def critical_patients(
     return build_paginated_response(query, page, limit)
 
 
-@router.get("/admin/alerts")
+@router.get(
+    "/admin/alerts",
+    response_model=PaginatedAlertsResponse,
+    summary="List All Active Alerts",
+    description=(
+        "Return the alert feed for administrators with optional filtering, searching, sorting, and pagination. "
+        "This endpoint surfaces active issues created by the vitals risk engine and care workflow."
+    ),
+)
 def all_alerts(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),

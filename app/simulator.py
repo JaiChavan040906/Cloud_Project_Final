@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.engine.routing import get_recipients
 from app.models import Event, Notification
+from app.schemas import MessageResponse, SimulatorNextResponse, SimulatorStateResponse
 from app.services.notifications import create_notification
 from app.services.sqs import send_to_sqs
 
-router = APIRouter(tags=["Simulator"])
+router = APIRouter()
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hospital_events.csv")
 
@@ -20,25 +21,41 @@ sim_state = {"current_step": 0}
 def _load_events():
     if not os.path.exists(CSV_PATH):
         return []
-    with open(CSV_PATH) as f:
-        reader = csv.DictReader(f)
+    with open(CSV_PATH) as file:
+        reader = csv.DictReader(file)
         return [
             {
-                "step": int(r["step"]),
-                "event_type": r["event_type"],
-                "patient_id": r["patient_id"],
-                "description": r["description"],
+                "step": int(row["step"]),
+                "event_type": row["event_type"],
+                "patient_id": row["patient_id"],
+                "description": row["description"],
             }
-            for r in reader
+            for row in reader
         ]
 
 
-@router.get("/simulator/state")
+@router.get(
+    "/simulator/state",
+    response_model=SimulatorStateResponse,
+    summary="Get Simulator State",
+    description=(
+        "Return the current simulator step and the total number of predefined hospital events. "
+        "This endpoint powers the simulator dashboard so users can see how far the demo has progressed."
+    ),
+)
 def get_state():
     return {"current_step": sim_state["current_step"], "total_events": len(_load_events())}
 
 
-@router.post("/simulator/next")
+@router.post(
+    "/simulator/next",
+    response_model=SimulatorNextResponse,
+    summary="Process Next Event",
+    description=(
+        "Process the next event from the simulation CSV, persist it as a hospital event, and route notifications "
+        "to the affected roles. The event is also sent to SQS when queue integration is configured."
+    ),
+)
 def next_event(db: Session = Depends(get_db)):
     events = _load_events()
     if sim_state["current_step"] >= len(events):
@@ -66,7 +83,15 @@ def next_event(db: Session = Depends(get_db)):
     return {"step": step_data, "recipients": recipients}
 
 
-@router.post("/simulator/reset")
+@router.post(
+    "/simulator/reset",
+    response_model=MessageResponse,
+    summary="Reset Simulation",
+    description=(
+        "Reset the simulator back to the first event and clear generated notifications. "
+        "Use this endpoint before rerunning the demo flow from the beginning."
+    ),
+)
 def reset_simulation(db: Session = Depends(get_db)):
     sim_state["current_step"] = 0
     db.query(Notification).delete()

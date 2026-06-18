@@ -12,7 +12,7 @@ from app.config import AWS_ENDPOINT_URL, AWS_REGION, S3_BUCKET_NAME, SQS_QUEUE_U
 from app.database import Base, engine, get_db
 from app.models import User
 from app.routers import admin, doctor, nurse, reception
-from app.schemas import LoginRequest
+from app.schemas import HealthResponse, LoginRequest, MessageResponse, NotificationResponse, TokenResponse
 from app.services import notifications as notif_service
 from app.simulator import router as simulator_router
 
@@ -30,7 +30,17 @@ app.add_middleware(
 )
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["System"],
+    summary="Health Check",
+    description=(
+        "Check the availability of the API, database, SQS queue, and S3 bucket. "
+        "This endpoint is public and is primarily used for local development, container health validation, "
+        "and infrastructure monitoring."
+    ),
+)
 def health():
     db_ok = False
     sqs_ok = False
@@ -74,7 +84,16 @@ def health():
     }
 
 
-@app.post("/auth/login")
+@app.post(
+    "/auth/login",
+    response_model=TokenResponse,
+    tags=["Authentication"],
+    summary="Authenticate User",
+    description=(
+        "Authenticate a user with username and password and return a JWT access token. "
+        "The returned token includes the user's role and is required for all protected dashboard endpoints."
+    ),
+)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.password):  # type: ignore[arg-type]
@@ -95,12 +114,30 @@ app.include_router(doctor.router, prefix="/api", tags=["Doctor"])
 app.include_router(simulator_router, prefix="/api", tags=["Simulator"])
 
 
-@app.get("/api/notifications")
+@app.get(
+    "/api/notifications",
+    response_model=list[NotificationResponse],
+    tags=["Notifications"],
+    summary="Get Notifications by Role",
+    description=(
+        "Retrieve notifications currently stored for a given role. "
+        "This endpoint is used by dashboard clients to render role-specific activity and alert messages."
+    ),
+)
 def get_notifications(role: str, db: Session = Depends(get_db)):
     return notif_service.get_notifications_for_role(db, role)
 
 
-@app.put("/api/notifications/{notification_id}/read")
+@app.put(
+    "/api/notifications/{notification_id}/read",
+    response_model=MessageResponse,
+    tags=["Notifications"],
+    summary="Mark Notification as Read",
+    description=(
+        "Mark a single notification as read by its notification ID. "
+        "This updates the stored notification state so the UI can clear unread badges or hide handled messages."
+    ),
+)
 def read_notification(notification_id: str, db: Session = Depends(get_db)):
     notif = notif_service.mark_notification_read(db, notification_id)
     if not notif:

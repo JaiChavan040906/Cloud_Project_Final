@@ -7,17 +7,28 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, User
 from app.routers import apply_search, apply_sort, build_paginated_response
-from app.schemas import MedicationIdResponse, PatientIdResponse, VitalsRecord, VitalsResponse
+from app.schemas import (
+    MedicationIdResponse,
+    PaginatedAlertsResponse,
+    PaginatedMedicationsResponse,
+    PaginatedPatientsResponse,
+    PatientIdResponse,
+    VitalsRecord,
+    VitalsResponse,
+)
 
-# All endpoints require nurse or admin role
 router = APIRouter(dependencies=[Depends(role_required("nurse", "admin"))])
 
 
-# ─── Assigned Patients ──────────────────────────────────────────────────────
-# Returns patients where assigned_nurse matches the logged-in nurse's username.
-
-
-@router.get("/patients/assigned")
+@router.get(
+    "/patients/assigned",
+    response_model=PaginatedPatientsResponse,
+    summary="Get Assigned Patients",
+    description=(
+        "Return the paginated patient list assigned to the current Nurse user, or all matching records for Admin. "
+        "This endpoint supports search, filters, and sorting so staff can quickly find patients in their queue."
+    ),
+)
 def assigned_patients(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -47,15 +58,19 @@ def assigned_patients(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Record Vitals ──────────────────────────────────────────────────────────
-# Validates the patient exists, then evaluates heart rate / SpO2 / temp /
-# blood sugar against thresholds. Returns severity (Normal / Warning / Critical)
-# with a list of abnormal findings. Creates alerts for abnormal readings.
-
-
-@router.post("/vitals", response_model=VitalsResponse)
+@router.post(
+    "/vitals",
+    response_model=VitalsResponse,
+    summary="Record Patient Vitals",
+    description=(
+        "Record vital signs for an existing patient. The values are evaluated by the risk engine, which may create "
+        "warning or critical alerts and store a corresponding event. Only Nurse and Admin roles can access this endpoint."
+    ),
+)
 def record_vitals(
-    data: VitalsRecord, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
+    data: VitalsRecord,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if not patient:
@@ -72,7 +87,7 @@ def record_vitals(
     if spo2 < 95:
         reasons.append(f"Low oxygen: {spo2}%")
     if temp > 100.4:
-        reasons.append(f"Fever: {temp}°F")
+        reasons.append(f"Fever: {temp}Â°F")
     if sugar > 140:
         reasons.append(f"High blood sugar: {sugar}")
 
@@ -110,10 +125,15 @@ def record_vitals(
     return {"severity": severity, "reasons": reasons}
 
 
-# ─── Active Alerts ──────────────────────────────────────────────────────────
-
-
-@router.get("/alerts")
+@router.get(
+    "/alerts",
+    response_model=PaginatedAlertsResponse,
+    summary="List Active Alerts",
+    description=(
+        "Return the nurse-facing alert feed with optional filters, search, sorting, and pagination. "
+        "This endpoint helps Nurse and Admin users monitor active warning and critical patient alerts."
+    ),
+)
 def get_alerts(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -143,11 +163,15 @@ def get_alerts(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Medication Queue ───────────────────────────────────────────────────────
-# Returns all medications with status "Prescribed" (not yet administered).
-
-
-@router.get("/medications/queue")
+@router.get(
+    "/medications/queue",
+    response_model=PaginatedMedicationsResponse,
+    summary="List Medication Queue",
+    description=(
+        "Return prescribed medications awaiting administration, with optional filtering, searching, sorting, and "
+        "pagination. Nurse and Admin users use this queue to track medication tasks."
+    ),
+)
 def medication_queue(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -176,14 +200,19 @@ def medication_queue(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Administer Medication ──────────────────────────────────────────────────
-# Marks a medication as Administered. Validates existence and prevents
-# double-administration. Emits a MedicationAdministered event.
-
-
-@router.put("/medications/{medication_id}/administer", response_model=MedicationIdResponse)
+@router.put(
+    "/medications/{medication_id}/administer",
+    response_model=MedicationIdResponse,
+    summary="Administer Medication",
+    description=(
+        "Mark a prescribed medication as administered for a patient. This endpoint is restricted to Nurse and Admin "
+        "roles and emits a MedicationAdministered event when the action succeeds."
+    ),
+)
 def administer_medication(
-    medication_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
+    medication_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
 ):
     med = db.query(Medication).filter(Medication.medication_id == medication_id).first()
     if not med:
@@ -202,13 +231,19 @@ def administer_medication(
     return {"message": "Medication administered", "medication_id": medication_id}
 
 
-# ─── Complete Checkup ───────────────────────────────────────────────────────
-# Logs that a nurse completed a checkup for a patient.
-
-
-@router.put("/checkups/{patient_id}/complete", response_model=PatientIdResponse)
+@router.put(
+    "/checkups/{patient_id}/complete",
+    response_model=PatientIdResponse,
+    summary="Complete Patient Checkup",
+    description=(
+        "Record that a nurse has completed a patient checkup. This endpoint is available to Nurse and Admin roles "
+        "and logs a CheckupCompleted event for downstream dashboards."
+    ),
+)
 def complete_checkup(
-    patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("nurse", "admin"))
+    patient_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("nurse", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:

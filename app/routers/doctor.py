@@ -7,17 +7,29 @@ from app.auth import role_required
 from app.database import get_db
 from app.models import Alert, Event, Medication, Patient, Review, User
 from app.routers import apply_search, apply_sort, build_paginated_response
-from app.schemas import MedicationIdResponse, PatientIdResponse, PrescriptionCreate, ReviewCreate, ReviewIdResponse
+from app.schemas import (
+    MedicationIdResponse,
+    PaginatedAlertsResponse,
+    PaginatedReviewsResponse,
+    PatientHistoryResponse,
+    PatientIdResponse,
+    PrescriptionCreate,
+    ReviewCreate,
+    ReviewIdResponse,
+)
 
-# All endpoints require doctor or admin role
 router = APIRouter(dependencies=[Depends(role_required("doctor", "admin"))])
 
 
-# ─── Review Queue ───────────────────────────────────────────────────────────
-# Returns all reviews with status "Pending" awaiting doctor action.
-
-
-@router.get("/reviews/queue")
+@router.get(
+    "/reviews/queue",
+    response_model=PaginatedReviewsResponse,
+    summary="List Pending Reviews",
+    description=(
+        "Return the doctor review queue with filtering, searching, sorting, and pagination support. "
+        "Doctor and Admin users use this endpoint to find patient reviews that still need attention."
+    ),
+)
 def review_queue(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -46,11 +58,15 @@ def review_queue(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Critical Patients ──────────────────────────────────────────────────────
-# Returns all active alerts with Critical severity.
-
-
-@router.get("/patients/critical")
+@router.get(
+    "/patients/critical",
+    response_model=PaginatedAlertsResponse,
+    summary="List Critical Patients",
+    description=(
+        "Return critical patient alerts for Doctor and Admin users with optional filters, search, sorting, and "
+        "pagination. This endpoint highlights patients that may require immediate physician review."
+    ),
+)
 def critical_patients(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -80,13 +96,19 @@ def critical_patients(
     return build_paginated_response(query, page, limit)
 
 
-# ─── Patient History ────────────────────────────────────────────────────────
-# Returns full patient record plus all related events, reviews, and medications.
-
-
-@router.get("/patients/{patient_id}/history")
+@router.get(
+    "/patients/{patient_id}/history",
+    response_model=PatientHistoryResponse,
+    summary="Get Patient History",
+    description=(
+        "Return the full patient record along with related events, reviews, and medications. "
+        "Doctor and Admin users use this endpoint to review the complete clinical timeline before taking action."
+    ),
+)
 def patient_history(
-    patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
+    patient_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("doctor", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
@@ -97,14 +119,19 @@ def patient_history(
     return {"patient": patient, "events": events, "reviews": reviews, "medications": medications}
 
 
-# ─── Prescribe Medication ───────────────────────────────────────────────────
-# Validates patient exists, checks for duplicate medication_id, then creates
-# a Medication record with status "Prescribed". Emits MedicationPrescribed event.
-
-
-@router.post("/prescriptions", response_model=MedicationIdResponse)
+@router.post(
+    "/prescriptions",
+    response_model=MedicationIdResponse,
+    summary="Prescribe Medication",
+    description=(
+        "Create a medication record for an existing patient. This endpoint is restricted to Doctor and Admin roles "
+        "and emits a MedicationPrescribed event when the prescription is successfully recorded."
+    ),
+)
 def prescribe_medicine(
-    data: PrescriptionCreate, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
+    data: PrescriptionCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("doctor", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if not patient:
@@ -125,14 +152,19 @@ def prescribe_medicine(
     return {"message": "Medicine prescribed", "medication_id": data.medication_id}
 
 
-# ─── Submit Review ──────────────────────────────────────────────────────────
-# Validates patient exists, checks for duplicate review_id, then creates a
-# review record. Emits PatientReviewed event.
-
-
-@router.post("/reviews", response_model=ReviewIdResponse)
+@router.post(
+    "/reviews",
+    response_model=ReviewIdResponse,
+    summary="Submit Patient Review",
+    description=(
+        "Create a patient review note and persist it in the review queue. This endpoint is available to Doctor and "
+        "Admin roles and emits a PatientReviewed event for the workflow audit trail."
+    ),
+)
 def submit_review(
-    data: ReviewCreate, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
+    data: ReviewCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("doctor", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == data.patient_id).first()
     if not patient:
@@ -153,14 +185,19 @@ def submit_review(
     return {"message": "Review submitted", "review_id": data.review_id}
 
 
-# ─── Approve Discharge ──────────────────────────────────────────────────────
-# Validates patient exists and is admitted. Transitions to "Discharged".
-# Emits DischargeApproved event.
-
-
-@router.put("/discharge/{patient_id}/approve", response_model=PatientIdResponse)
+@router.put(
+    "/discharge/{patient_id}/approve",
+    response_model=PatientIdResponse,
+    summary="Approve Discharge",
+    description=(
+        "Approve discharge for an admitted patient and transition the patient into the discharged state. "
+        "This endpoint is restricted to Doctor and Admin roles and emits a DischargeApproved event."
+    ),
+)
 def approve_discharge(
-    patient_id: str, db: Session = Depends(get_db), user: User = Depends(role_required("doctor", "admin"))
+    patient_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(role_required("doctor", "admin")),
 ):
     patient = db.query(Patient).filter(Patient.patient_id == patient_id).first()
     if not patient:
