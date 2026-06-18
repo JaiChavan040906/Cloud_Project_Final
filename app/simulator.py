@@ -11,8 +11,7 @@ from app.engine.risk import evaluate_vitals
 from app.engine.routing import get_recipients
 from app.models import Alert, Appointment, Event, Medication, Notification, Patient, Review
 from app.schemas import MessageResponse, SimulatorNextResponse, SimulatorStateResponse
-from app.services.notifications import create_notification
-from app.services.sqs import send_to_sqs
+from app.services.event_bus import build_event_payload, publish_event
 
 router = APIRouter()
 
@@ -291,13 +290,13 @@ def next_event(db: Session = Depends(get_db)):
         db.add(medication)
 
     elif event_type == "MedicationAdministered":
-        medication = (
+        existing_medication: Medication | None = (
             db.query(Medication)
             .filter(Medication.patient_id == patient_id, Medication.status == "Prescribed")
             .first()
         )
-        if medication:
-            medication.status = cast(str, "Administered")
+        if existing_medication:
+            existing_medication.status = cast(str, "Administered")
 
     elif event_type == "PatientReviewed":
         patient = _get_or_create_patient(db, patient_id)
@@ -314,10 +313,15 @@ def next_event(db: Session = Depends(get_db)):
     db.commit()
 
     recipients = get_recipients(event_type)
-    for role in recipients:
-        create_notification(db, role, f"{event_type}: {step_data['description']}")
-
-    send_to_sqs(step_data)
+    publish_event(
+        db,
+        build_event_payload(
+            event,
+            actor_role="simulator",
+            source="simulator",
+            metadata={"step": step_data["step"]},
+        ),
+    )
 
     return {"step": step_data, "recipients": recipients}
 

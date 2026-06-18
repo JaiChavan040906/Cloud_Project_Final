@@ -6,22 +6,39 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./data/hospital.db
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/hospital
       - JWT_SECRET=dev-secret
       - JWT_ALGORITHM=HS256
       - JWT_EXPIRATION_MINUTES=60
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=fake
       - AWS_SECRET_ACCESS_KEY=fake
-      - SQS_QUEUE_URL=http://localstack:4566/000000000000/hospital-events
+      - SQS_QUEUE_URL=http://localstack:4566/000000000000/hospital-event-queue
       - S3_BUCKET_NAME=hospital-events
       - AWS_ENDPOINT_URL=http://localstack:4566
       - LOG_LEVEL=INFO
     depends_on:
+      postgres:
+        condition: service_healthy
       localstack:
         condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=hospital
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
     volumes:
-      - hospital_data:/app/data
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hospital"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   localstack:
     image: localstack/localstack:3.8.1
@@ -46,5 +63,5 @@ services:
       start_period: 30s
 
 volumes:
-  hospital_data:
+  postgres_data:
   localstack_data:

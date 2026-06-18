@@ -1,0 +1,37 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "lambda/**"
+      - "pyproject.toml"
+      - "uv.lock"
+
+jobs:
+  deploy-lambda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build lambda bundle
+        run: |
+          python -m pip install --upgrade pip
+          mkdir -p build/lambda
+          pip install -r lambda/requirements.txt -t build/lambda
+          cp -r app build/lambda/app
+          cp lambda/handler.py build/lambda/handler.py
+          cd build/lambda
+          zip -r ../../lambda-deploy.zip .
+      - name: Update lambda
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws lambda update-function-code \
+            --function-name hospital-event-processor \
+            --zip-file fileb://lambda-deploy.zip

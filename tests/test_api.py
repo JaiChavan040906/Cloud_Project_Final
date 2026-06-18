@@ -603,12 +603,21 @@ class TestErrorHandling:
 
 class TestNotifications:
     def test_get_notifications_no_auth(self, client):
-        r = client.get("/api/notifications", params={"role": "nurse"})
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
+        r = client.get("/api/notifications")
+        assert r.status_code == 401
 
-    def test_mark_notification_read_404(self, client):
-        r = client.put("/api/notifications/NONEXISTENT/read")
+    def test_get_notifications_for_current_role(self, client, auth_headers):
+        client.post(
+            "/api/patients/register",
+            json={"patient_id": "P100", "name": "Notif Test", "age": 30, "gender": "Male"},
+            headers=auth_headers["reception"],
+        )
+        r = client.get("/api/notifications", headers=auth_headers["admin"])
+        assert r.status_code == 200
+        assert any(item["recipient_role"] == "admin" for item in r.json())
+
+    def test_mark_notification_read_404(self, client, auth_headers):
+        r = client.put("/api/notifications/NONEXISTENT/read", headers=auth_headers["admin"])
         assert r.status_code == 404
 
 

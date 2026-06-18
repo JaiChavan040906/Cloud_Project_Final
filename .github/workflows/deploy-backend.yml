@@ -1,0 +1,23 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-ec2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/app
+            git pull origin main
+            ~/.local/bin/uv sync --frozen --no-dev
+            pkill -f "uvicorn app.main:app" || true
+            nohup ~/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > /var/log/backend/app.log 2>&1 &

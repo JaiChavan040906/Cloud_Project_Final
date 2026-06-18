@@ -1,4 +1,5 @@
 from time import monotonic
+from typing import cast
 
 import boto3
 from botocore.config import Config
@@ -8,7 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.auth import create_access_token, verify_password
+from app.auth import create_access_token, get_current_user, verify_password
 from app.config import AWS_ENDPOINT_URL, AWS_REGION, S3_BUCKET_NAME, SQS_QUEUE_URL
 from app.database import Base, SessionLocal, engine, get_db
 from app.models import User
@@ -143,14 +144,14 @@ app.include_router(simulator_router, prefix="/api", tags=["Simulator"])
     "/api/notifications",
     response_model=list[NotificationResponse],
     tags=["Notifications"],
-    summary="Get Notifications by Role",
+    summary="Get Notifications for Current User",
     description=(
-        "Retrieve notifications currently stored for a given role. "
+        "Retrieve notifications currently stored for the authenticated user's role. "
         "This endpoint is used by dashboard clients to render role-specific activity and alert messages."
     ),
 )
-def get_notifications(role: str, db: Session = Depends(get_db)):
-    return notif_service.get_notifications_for_role(db, role)
+def get_notifications(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return notif_service.get_notifications_for_role(db, cast(str, user.role))
 
 
 @app.put(
@@ -163,8 +164,12 @@ def get_notifications(role: str, db: Session = Depends(get_db)):
         "This updates the stored notification state so the UI can clear unread badges or hide handled messages."
     ),
 )
-def read_notification(notification_id: str, db: Session = Depends(get_db)):
-    notif = notif_service.mark_notification_read(db, notification_id)
+def read_notification(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    notif = notif_service.mark_notification_read(db, notification_id, cast(str, user.role))
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Marked as read"}

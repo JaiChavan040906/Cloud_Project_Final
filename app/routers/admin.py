@@ -5,12 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.auth import role_required
 from app.database import get_db
-from app.engine.routing import get_recipients
 from app.models import Alert, Event, Patient, Review, User
 from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import AdminSummaryResponse, PaginatedAlertsResponse, PaginatedPatientsResponse, PatientIdResponse
-from app.services.notifications import create_notification
-from app.services.sqs import send_to_sqs
+from app.services.event_bus import build_event_payload, publish_event
 
 router = APIRouter()
 
@@ -104,15 +102,15 @@ def approve_admission(patient_id: str, db: Session = Depends(get_db), user: User
     db.add(event)
     db.commit()
 
-    event_data = {
-        "step": 0,
-        "event_type": "AdmissionApproved",
-        "patient_id": patient_id,
-        "description": f"Admission approved for patient {patient_id}",
-    }
-    for role in get_recipients("AdmissionApproved"):
-        create_notification(db, role, f"AdmissionApproved: {patient_id}")
-    send_to_sqs(event_data)
+    publish_event(
+        db,
+        build_event_payload(
+            event,
+            actor_role=cast(str, user.role),
+            source="api",
+            metadata={"patient_status": patient.status},
+        ),
+    )
 
     return {"message": "Admission approved", "patient_id": patient_id}
 

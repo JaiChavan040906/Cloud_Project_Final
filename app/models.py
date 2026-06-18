@@ -126,6 +126,7 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     notification_id = Column(String(20), unique=True, nullable=False)
+    source_event_id = Column(String(50), index=True)
     recipient_role = Column(String(20), nullable=False)
     message = Column(Text, nullable=False)
     status: Mapped[str] = Column(String(20), default="Unread")

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-QUEUE_NAME="hospital-events"
+QUEUE_NAME="hospital-event-queue"
 BUCKET_NAME="hospital-events"
 
 echo "=== Initializing Localstack resources ==="

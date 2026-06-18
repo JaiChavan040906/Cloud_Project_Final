@@ -16,9 +16,7 @@ export default function NotificationPanel() {
     if (!user) return
     async function fetch() {
       try {
-        const res = await client.get<Notification[]>("/api/notifications", {
-          params: { role: user!.role },
-        })
+        const res = await client.get<Notification[]>("/api/notifications")
         setNotifications(res.data)
       } catch {
         // ignore
@@ -39,7 +37,7 @@ export default function NotificationPanel() {
 
   async function handleMarkRead(id: string) {
     await client.put(`/api/notifications/${id}/read`)
-    setNotifications((prev) => prev.filter((n) => n.id.toString() !== id))
+    setNotifications((prev) => prev.filter((n) => n.notification_id !== id))
   }
 
   return (
@@ -67,7 +65,7 @@ export default function NotificationPanel() {
               notifications.map((n) => (
                 <button
                   key={n.notification_id}
-                  onClick={() => handleMarkRead(n.id.toString())}
+                  onClick={() => handleMarkRead(n.notification_id)}
                   className="flex w-full items-start gap-2 border-b px-4 py-3 text-left text-sm hover:bg-accent"
                 >
                   <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />

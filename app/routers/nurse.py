@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.auth import role_required
 from app.database import get_db
 from app.engine.risk import evaluate_vitals
-from app.engine.routing import get_recipients
 from app.models import Alert, Event, Medication, Patient, User
 from app.routers import apply_search, apply_sort, build_paginated_response
 from app.schemas import (
@@ -19,8 +18,7 @@ from app.schemas import (
     VitalsRecord,
     VitalsResponse,
 )
-from app.services.notifications import create_notification
-from app.services.sqs import send_to_sqs
+from app.services.event_bus import build_event_payload, publish_event
 
 router = APIRouter()
 
@@ -122,15 +120,15 @@ def record_vitals(
     db.add(event)
     db.commit()
 
-    event_data = {
-        "step": 0,
-        "event_type": event_type,
-        "patient_id": data.patient_id,
-        "description": f"Vitals recorded: {'; '.join(reasons) if reasons else 'All normal'}",
-    }
-    for role in get_recipients(event_type):
-        create_notification(db, role, f"{event_type}: Patient {data.patient_id} vitals recorded")
-    send_to_sqs(event_data)
+    publish_event(
+        db,
+        build_event_payload(
+            event,
+            actor_role=cast(str, user.role),
+            source="api",
+            metadata={"severity": severity, "reasons": reasons},
+        ),
+    )
 
     return {"severity": severity.capitalize(), "reasons": reasons}
 
@@ -239,15 +237,15 @@ def administer_medication(
     db.add(event)
     db.commit()
 
-    event_data = {
-        "step": 0,
-        "event_type": "MedicationAdministered",
-        "patient_id": med.patient_id,
-        "description": f"Medication {med.medicine_name} administered",
-    }
-    for role in get_recipients("MedicationAdministered"):
-        create_notification(db, role, f"MedicationAdministered: {med.medicine_name} for patient {med.patient_id}")
-    send_to_sqs(event_data)
+    publish_event(
+        db,
+        build_event_payload(
+            event,
+            actor_role=cast(str, user.role),
+            source="api",
+            metadata={"medication_id": med.medication_id, "medicine_name": med.medicine_name},
+        ),
+    )
 
     return {"message": "Medication administered", "medication_id": medication_id}
 
@@ -278,14 +276,14 @@ def complete_checkup(
     db.add(event)
     db.commit()
 
-    event_data = {
-        "step": 0,
-        "event_type": "CheckupCompleted",
-        "patient_id": patient_id,
-        "description": f"Checkup completed for patient {patient_id}",
-    }
-    for role in get_recipients("CheckupCompleted"):
-        create_notification(db, role, f"CheckupCompleted: {patient_id}")
-    send_to_sqs(event_data)
+    publish_event(
+        db,
+        build_event_payload(
+            event,
+            actor_role=cast(str, user.role),
+            source="api",
+            metadata={"patient_status": patient.status},
+        ),
+    )
 
     return {"message": "Checkup completed", "patient_id": patient_id}

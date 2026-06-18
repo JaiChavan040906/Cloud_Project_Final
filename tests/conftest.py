@@ -1,3 +1,4 @@
+import os
 import tempfile
 from collections.abc import Generator
 
@@ -14,8 +15,17 @@ from app.models import Alert, Appointment, Event, Medication, Notification, Pati
 
 @pytest.fixture
 def db_file() -> Generator[str, None, None]:
-    with tempfile.NamedTemporaryFile(suffix=".db") as f:
-        yield f.name
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        yield path
+    finally:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            pass
 
 
 @pytest.fixture
@@ -28,6 +38,7 @@ def db_session(db_file: str) -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+        engine.dispose()
 
 
 @pytest.fixture
@@ -47,6 +58,7 @@ def client(db_file: str) -> Generator[TestClient, None, None]:
     test_client = TestClient(app)
     yield test_client
     app.dependency_overrides.clear()
+    engine.dispose()
 
 
 @pytest.fixture
@@ -68,6 +80,7 @@ def seed_users(db_file: str) -> list[User]:
         return users
     finally:
         session.close()
+        engine.dispose()
 
 
 @pytest.fixture

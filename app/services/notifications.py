@@ -6,10 +6,29 @@ from sqlalchemy.orm import Session
 from app.models import Notification
 
 
-def create_notification(db: Session, recipient_role: str, message: str) -> Notification:
+def create_notification(
+    db: Session,
+    recipient_role: str,
+    message: str,
+    *,
+    source_event_id: str | None = None,
+) -> Notification:
     """Create an unread notification targeted at a specific role."""
+    if source_event_id:
+        existing = (
+            db.query(Notification)
+            .filter(
+                Notification.source_event_id == source_event_id,
+                Notification.recipient_role == recipient_role,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+
     notif = Notification(
         notification_id=f"NOTIF-{uuid.uuid4().hex[:8].upper()}",
+        source_event_id=source_event_id,
         recipient_role=recipient_role,
         message=message,
         status="Unread",
@@ -30,9 +49,13 @@ def get_notifications_for_role(db: Session, role: str) -> list[Notification]:
     )
 
 
-def mark_notification_read(db: Session, notification_id: str) -> Notification | None:
+def mark_notification_read(db: Session, notification_id: str, role: str) -> Notification | None:
     """Mark a single notification as Read by its notification_id."""
-    notif = db.query(Notification).filter(Notification.notification_id == notification_id).first()
+    notif = (
+        db.query(Notification)
+        .filter(Notification.notification_id == notification_id, Notification.recipient_role == role)
+        .first()
+    )
     if notif:
         notif.status = cast(str, "Read")
         db.commit()

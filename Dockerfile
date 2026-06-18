@@ -11,7 +11,7 @@ COPY --from=builder /app/.venv /app/.venv
 COPY . .
 
 ENV PATH="/app/.venv/bin:$PATH"
-ENV DATABASE_URL="sqlite:///./hospital.db"
+ENV DATABASE_URL="postgresql+psycopg://postgres:postgres@postgres:5432/hospital"
 
 EXPOSE 8000
 

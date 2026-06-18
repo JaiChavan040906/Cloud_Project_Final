@@ -1,9 +1,12 @@
 import json
+import logging
 
 import boto3
 from botocore.config import Config
 
 from app.config import AWS_ENDPOINT_URL, AWS_REGION, SQS_QUEUE_URL
+
+logger = logging.getLogger(__name__)
 
 
 def _get_client():
@@ -21,6 +24,7 @@ def send_to_sqs(event_data: dict) -> bool:
         client.send_message(QueueUrl=SQS_QUEUE_URL, MessageBody=json.dumps(event_data))
         return True
     except Exception:
+        logger.exception("Failed to publish event to SQS")
         return False
 
 
