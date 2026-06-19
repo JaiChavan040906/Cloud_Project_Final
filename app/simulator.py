@@ -1,7 +1,7 @@
 import csv
 import os
 import uuid
-from typing import cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -15,25 +15,57 @@ from app.services.event_bus import build_event_payload, publish_event
 
 router = APIRouter()
 
-CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "hospital_events.csv")
-
 sim_state = {"current_step": 0}
 
+_BUILTIN_EVENTS: list[dict[str, Any]] = [
+    {"step": 1, "event_type": "PatientRegistered", "patient_id": "P101", "description": "New patient John Doe registered"},
+    {"step": "2", "event_type": "AppointmentCreated", "patient_id": "P101", "description": "Follow-up appointment created"},
+    {"step": "3", "event_type": "PatientCheckedIn", "patient_id": "P101", "description": "Patient John Doe checked in"},
+    {"step": "4", "event_type": "PatientRegistered", "patient_id": "P102", "description": "New patient Jane Smith registered"},
+    {"step": "5", "event_type": "AdmissionRequested", "patient_id": "P102", "description": "Admission requested for Jane Smith"},
+    {"step": "6", "event_type": "AdmissionApproved", "patient_id": "P102", "description": "Admission approved for Jane Smith"},
+    {"step": "7", "event_type": "PatientRegistered", "patient_id": "P103", "description": "New patient Bob Wilson registered"},
+    {"step": "8", "event_type": "AppointmentCreated", "patient_id": "P103", "description": "Consultation appointment created"},
+    {"step": "9", "event_type": "AdmissionRequested", "patient_id": "P103", "description": "Admission requested for Bob Wilson"},
+    {"step": "10", "event_type": "PatientRegistered", "patient_id": "P104", "description": "New patient Alice Davis registered"},
+    {"step": "11", "event_type": "VitalsRecorded", "patient_id": "P104", "description": "Routine vitals recorded"},
+    {"step": "12", "event_type": "HighSugarDetected", "patient_id": "P104", "description": "High blood sugar detected - 185 mg/dL"},
+    {"step": "13", "event_type": "MedicationPrescribed", "patient_id": "P104", "description": "Insulin prescribed for high blood sugar"},
+    {"step": "14", "event_type": "PatientReviewed", "patient_id": "P104", "description": "Dr. Smith reviewed patient condition"},
+    {"step": "15", "event_type": "PatientRegistered", "patient_id": "P105", "description": "New patient Tom Brown registered"},
+    {"step": "16", "event_type": "AppointmentCreated", "patient_id": "P105", "description": "ER follow-up appointment created"},
+    {"step": "17", "event_type": "VitalsRecorded", "patient_id": "P105", "description": "Abnormal vitals detected"},
+    {"step": "18", "event_type": "CriticalAlertGenerated", "patient_id": "P105", "description": "CRITICAL: Heart rate 150 - Oxygen 85%"},
+    {"step": "19", "event_type": "PatientReviewed", "patient_id": "P105", "description": "Dr. Carter reviewed critical patient"},
+    {"step": "20", "event_type": "DischargeApproved", "patient_id": "P105", "description": "Patient Tom Brown discharged"},
+]
 
-def _load_events():
-    if not os.path.exists(CSV_PATH):
-        return []
-    with open(CSV_PATH) as file:
-        reader = csv.DictReader(file)
-        return [
-            {
-                "step": int(row["step"]),
-                "event_type": row["event_type"],
-                "patient_id": row["patient_id"],
-                "description": row["description"],
-            }
-            for row in reader
+
+def _load_events() -> list[dict[str, Any]]:
+    csv_path = os.getenv("HOSPITAL_EVENTS_CSV")
+    if csv_path:
+        candidates = [csv_path]
+    else:
+        candidates = [
+            os.path.join(os.path.dirname(__file__), "..", "data", "hospital_events.csv"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "data", "hospital_events.csv"),
+            "/app/data/hospital_events.csv",
+            "/home/ec2-user/app/data/hospital_events.csv",
         ]
+    for path in candidates:
+        if os.path.exists(path):
+            with open(path) as file:
+                reader = csv.DictReader(file)
+                return [
+                    {
+                        "step": int(row["step"]),
+                        "event_type": row["event_type"],
+                        "patient_id": row["patient_id"],
+                        "description": row["description"],
+                    }
+                    for row in reader
+                ]
+    return list(_BUILTIN_EVENTS)
 
 
 def _get_or_create_patient(db: Session, patient_id: str, name: str = "Unknown") -> Patient:

@@ -3,7 +3,7 @@ from typing import cast
 
 import boto3
 from botocore.config import Config
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -132,6 +132,14 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     }
 
 
+# Role hierarchy: which roles a given role is allowed to view notifications for
+ROLE_HIERARCHY: dict[str, list[str]] = {
+    "admin": ["admin", "doctor", "nurse", "reception"],
+    "doctor": ["doctor", "admin"],
+    "nurse": ["nurse", "admin"],
+    "reception": ["reception", "admin"],
+}
+
 app.include_router(internal_router)
 app.include_router(reception.router, prefix="/api", tags=["Receptionist"])
 app.include_router(admin.router, prefix="/api", tags=["Admin"])
@@ -146,12 +154,22 @@ app.include_router(simulator_router, prefix="/api", tags=["Simulator"])
     tags=["Notifications"],
     summary="Get Notifications for Current User",
     description=(
-        "Retrieve notifications currently stored for the authenticated user's role. "
+        "Retrieve notifications for a specific role. "
+        "The authenticated user must have access to the requested role. "
+        "If no role is specified, the user's own role is used. "
         "This endpoint is used by dashboard clients to render role-specific activity and alert messages."
     ),
 )
-def get_notifications(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return notif_service.get_notifications_for_role(db, cast(str, user.role))
+def get_notifications(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    role: str | None = Query(default=None, description="Dashboard role to fetch notifications for"),
+):
+    target_role = role if role else cast(str, user.role)
+    allowed = ROLE_HIERARCHY.get(cast(str, user.role), [cast(str, user.role)])
+    if target_role not in allowed:
+        raise HTTPException(status_code=403, detail="Not authorized for this role's notifications")
+    return notif_service.get_notifications_for_role(db, target_role)
 
 
 @app.put(
@@ -168,8 +186,13 @@ def read_notification(
     notification_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
+    role: str | None = Query(default=None, description="Dashboard role to scope the notification to"),
 ):
-    notif = notif_service.mark_notification_read(db, notification_id, cast(str, user.role))
+    target_role = role if role else cast(str, user.role)
+    allowed = ROLE_HIERARCHY.get(cast(str, user.role), [cast(str, user.role)])
+    if target_role not in allowed:
+        raise HTTPException(status_code=403, detail="Not authorized for this role's notifications")
+    notif = notif_service.mark_notification_read(db, notification_id, target_role)
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Marked as read"}

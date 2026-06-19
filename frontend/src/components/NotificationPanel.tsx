@@ -4,7 +4,11 @@ import { useAuth } from "@/context/AuthContext"
 import type { Notification } from "@/types"
 import { Bell } from "lucide-react"
 
-export default function NotificationPanel() {
+interface NotificationPanelProps {
+  dashboardRole?: string
+}
+
+export default function NotificationPanel({ dashboardRole }: NotificationPanelProps) {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
@@ -12,11 +16,13 @@ export default function NotificationPanel() {
 
   const unreadCount = notifications.filter((n) => n.status === "Unread").length
 
+  const params = dashboardRole ? { role: dashboardRole } : undefined
+
   useEffect(() => {
     if (!user) return
     async function fetch() {
       try {
-        const res = await client.get<Notification[]>("/api/notifications")
+        const res = await client.get<Notification[]>("/api/notifications", { params })
         setNotifications(res.data)
       } catch {
         // ignore
@@ -25,7 +31,7 @@ export default function NotificationPanel() {
     fetch()
     const interval = setInterval(fetch, 10000)
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, dashboardRole])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -36,7 +42,7 @@ export default function NotificationPanel() {
   }, [])
 
   async function handleMarkRead(id: string) {
-    await client.put(`/api/notifications/${id}/read`)
+    await client.put(`/api/notifications/${id}/read`, undefined, { params })
     setNotifications((prev) => prev.filter((n) => n.notification_id !== id))
   }
 

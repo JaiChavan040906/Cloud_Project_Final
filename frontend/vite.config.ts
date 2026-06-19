@@ -10,9 +10,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "http://54.147.40.134:8000",
-      "/auth": "http://54.147.40.134:8000",
-      "/health": "http://54.147.40.134:8000",
+      "/api": "http://localhost:8000",
+      "/auth": "http://localhost:8000",
+      "/health": "http://localhost:8000",
     },
   },
 })

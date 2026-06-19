@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Outlet, useNavigate, useLocation } from "react-router-dom"
+import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import NotificationPanel from "@/components/NotificationPanel"
 import type { UserRole } from "@/types"
@@ -92,6 +92,7 @@ export default function DashboardLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const { role: dashboardRole } = useParams<{ role: string }>()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const filteredItems = navItems.filter(
@@ -173,7 +174,7 @@ export default function DashboardLayout() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <NotificationPanel />
+            <NotificationPanel dashboardRole={dashboardRole} />
           </div>
         </header>
 

@@ -97,25 +97,14 @@ This creates four default users (see below).
 
 ### 7. Start the Application
 
-You can run the backend and frontend together, or separately.
-
-#### Option A: Run Both Together (recommended)
-
-```bash
-npm run dev
-```
-
-This uses `concurrently` to start both the FastAPI backend on port 8000 and the Vite frontend on port 5173.
-
-#### Option B: Run Separately
-
-Terminal 1 — Backend:
+Terminal 1 — Backend (port 8000):
 
 ```bash
 uv run uvicorn app.main:app --reload --port 8000
+# or: npm run dev
 ```
 
-Terminal 2 — Frontend:
+Terminal 2 — Frontend (port 5173):
 
 ```bash
 cd frontend && npm run dev
@@ -196,7 +185,7 @@ npm run lint            # ruff check .
 npm run lint:fix        # ruff check --fix .
 npm run typecheck       # mypy app/
 npm run sync            # uv sync
-npm run dev             # Start backend + frontend concurrently
+npm run dev             # Start backend (uv run fastapi dev)
 npm run build           # docker compose build
 npm run up              # docker compose up -d
 npm run down            # docker compose down
