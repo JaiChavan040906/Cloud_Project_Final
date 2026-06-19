@@ -1,3 +1,4 @@
+import os
 from time import monotonic
 from typing import cast
 
@@ -6,6 +7,7 @@ from botocore.config import Config
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -196,3 +198,8 @@ def read_notification(
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found")
     return {"message": "Marked as read"}
+
+
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.isdir(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

@@ -19,3 +19,19 @@ step,event_type,patient_id,description
 18,CriticalAlertGenerated,P105,CRITICAL: Heart rate 150 - Oxygen 85%
 19,PatientReviewed,P105,Dr. Carter reviewed critical patient
 20,DischargeApproved,P105,Patient Tom Brown discharged
+21,AppointmentCreated,P106,Pre-surgery consultation booked for Sarah Lee
+22,PatientRegistered,P106,New patient Sarah Lee registered
+23,PatientCheckedIn,P106,Patient Sarah Lee checked in for surgery
+24,CheckupCompleted,P106,Pre-op nurse assessment - all normal
+25,VitalsRecorded,P106,Routine pre-op vitals recorded - within normal range
+26,PatientReviewed,P106,Dr. Smith reviewed - cleared for surgery
+27,AdmissionRequested,P106,Admission requested for Sarah Lee - surgery scheduled
+28,AdmissionApproved,P106,Admission approved - ward assigned for recovery
+29,CheckupCompleted,P106,Post-op nurse checkup - patient recovering
+30,VitalsRecorded,P106,Post-op vitals: Fever 103°F HR 140 BP 80/50
+31,CriticalAlertGenerated,P106,CRITICAL: Post-op infection detected - immediate attention needed
+32,MedicationPrescribed,P106,Antibiotics prescribed for post-op infection
+33,MedicationAdministered,P106,Antibiotics administered by nurse
+34,VitalsRecorded,P106,Follow-up vitals: Temp 100°F HR 100 BP 110/70
+35,PatientReviewed,P106,Dr. Smith reviewed - infection under control
+36,DischargeApproved,P106,Discharge approved - fully recovered

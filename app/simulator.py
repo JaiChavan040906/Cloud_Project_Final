@@ -18,26 +18,111 @@ router = APIRouter()
 sim_state = {"current_step": 0}
 
 _BUILTIN_EVENTS: list[dict[str, Any]] = [
-    {"step": 1, "event_type": "PatientRegistered", "patient_id": "P101", "description": "New patient John Doe registered"},
-    {"step": "2", "event_type": "AppointmentCreated", "patient_id": "P101", "description": "Follow-up appointment created"},
+    {
+        "step": 1,
+        "event_type": "PatientRegistered",
+        "patient_id": "P101",
+        "description": "New patient John Doe registered",
+    },
+    {
+        "step": "2",
+        "event_type": "AppointmentCreated",
+        "patient_id": "P101",
+        "description": "Follow-up appointment created",
+    },
     {"step": "3", "event_type": "PatientCheckedIn", "patient_id": "P101", "description": "Patient John Doe checked in"},
-    {"step": "4", "event_type": "PatientRegistered", "patient_id": "P102", "description": "New patient Jane Smith registered"},
-    {"step": "5", "event_type": "AdmissionRequested", "patient_id": "P102", "description": "Admission requested for Jane Smith"},
-    {"step": "6", "event_type": "AdmissionApproved", "patient_id": "P102", "description": "Admission approved for Jane Smith"},
-    {"step": "7", "event_type": "PatientRegistered", "patient_id": "P103", "description": "New patient Bob Wilson registered"},
-    {"step": "8", "event_type": "AppointmentCreated", "patient_id": "P103", "description": "Consultation appointment created"},
-    {"step": "9", "event_type": "AdmissionRequested", "patient_id": "P103", "description": "Admission requested for Bob Wilson"},
-    {"step": "10", "event_type": "PatientRegistered", "patient_id": "P104", "description": "New patient Alice Davis registered"},
+    {
+        "step": "4",
+        "event_type": "PatientRegistered",
+        "patient_id": "P102",
+        "description": "New patient Jane Smith registered",
+    },
+    {
+        "step": "5",
+        "event_type": "AdmissionRequested",
+        "patient_id": "P102",
+        "description": "Admission requested for Jane Smith",
+    },
+    {
+        "step": "6",
+        "event_type": "AdmissionApproved",
+        "patient_id": "P102",
+        "description": "Admission approved for Jane Smith",
+    },
+    {
+        "step": "7",
+        "event_type": "PatientRegistered",
+        "patient_id": "P103",
+        "description": "New patient Bob Wilson registered",
+    },
+    {
+        "step": "8",
+        "event_type": "AppointmentCreated",
+        "patient_id": "P103",
+        "description": "Consultation appointment created",
+    },
+    {
+        "step": "9",
+        "event_type": "AdmissionRequested",
+        "patient_id": "P103",
+        "description": "Admission requested for Bob Wilson",
+    },
+    {
+        "step": "10",
+        "event_type": "PatientRegistered",
+        "patient_id": "P104",
+        "description": "New patient Alice Davis registered",
+    },
     {"step": "11", "event_type": "VitalsRecorded", "patient_id": "P104", "description": "Routine vitals recorded"},
-    {"step": "12", "event_type": "HighSugarDetected", "patient_id": "P104", "description": "High blood sugar detected - 185 mg/dL"},
-    {"step": "13", "event_type": "MedicationPrescribed", "patient_id": "P104", "description": "Insulin prescribed for high blood sugar"},
-    {"step": "14", "event_type": "PatientReviewed", "patient_id": "P104", "description": "Dr. Smith reviewed patient condition"},
-    {"step": "15", "event_type": "PatientRegistered", "patient_id": "P105", "description": "New patient Tom Brown registered"},
-    {"step": "16", "event_type": "AppointmentCreated", "patient_id": "P105", "description": "ER follow-up appointment created"},
+    {
+        "step": "12",
+        "event_type": "HighSugarDetected",
+        "patient_id": "P104",
+        "description": "High blood sugar detected - 185 mg/dL",
+    },
+    {
+        "step": "13",
+        "event_type": "MedicationPrescribed",
+        "patient_id": "P104",
+        "description": "Insulin prescribed for high blood sugar",
+    },
+    {
+        "step": "14",
+        "event_type": "PatientReviewed",
+        "patient_id": "P104",
+        "description": "Dr. Smith reviewed patient condition",
+    },
+    {
+        "step": "15",
+        "event_type": "PatientRegistered",
+        "patient_id": "P105",
+        "description": "New patient Tom Brown registered",
+    },
+    {
+        "step": "16",
+        "event_type": "AppointmentCreated",
+        "patient_id": "P105",
+        "description": "ER follow-up appointment created",
+    },
     {"step": "17", "event_type": "VitalsRecorded", "patient_id": "P105", "description": "Abnormal vitals detected"},
-    {"step": "18", "event_type": "CriticalAlertGenerated", "patient_id": "P105", "description": "CRITICAL: Heart rate 150 - Oxygen 85%"},
-    {"step": "19", "event_type": "PatientReviewed", "patient_id": "P105", "description": "Dr. Carter reviewed critical patient"},
-    {"step": "20", "event_type": "DischargeApproved", "patient_id": "P105", "description": "Patient Tom Brown discharged"},
+    {
+        "step": "18",
+        "event_type": "CriticalAlertGenerated",
+        "patient_id": "P105",
+        "description": "CRITICAL: Heart rate 150 - Oxygen 85%",
+    },
+    {
+        "step": "19",
+        "event_type": "PatientReviewed",
+        "patient_id": "P105",
+        "description": "Dr. Carter reviewed critical patient",
+    },
+    {
+        "step": "20",
+        "event_type": "DischargeApproved",
+        "patient_id": "P105",
+        "description": "Patient Tom Brown discharged",
+    },
 ]
 
 
@@ -179,6 +264,15 @@ def run_simulation_to_completion(db: Session) -> None:
                 status="Prescribed",
             )
             db.add(medication)
+
+        elif event_type == "MedicationAdministered":
+            existing_medication: Medication | None = (
+                db.query(Medication)
+                .filter(Medication.patient_id == patient_id, Medication.status == "Prescribed")
+                .first()
+            )
+            if existing_medication:
+                existing_medication.status = cast(str, "Administered")
 
         elif event_type == "PatientReviewed":
             _get_or_create_patient(db, patient_id)
@@ -323,9 +417,7 @@ def next_event(db: Session = Depends(get_db)):
 
     elif event_type == "MedicationAdministered":
         existing_medication: Medication | None = (
-            db.query(Medication)
-            .filter(Medication.patient_id == patient_id, Medication.status == "Prescribed")
-            .first()
+            db.query(Medication).filter(Medication.patient_id == patient_id, Medication.status == "Prescribed").first()
         )
         if existing_medication:
             existing_medication.status = cast(str, "Administered")
