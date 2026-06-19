@@ -65,10 +65,23 @@ if (Test-Path $lambdaZip) {
 # Create dist folder
 New-Item -ItemType Directory -Path $lambdaDist | Out-Null
 
-# Install pip packages (forcing Linux 64-bit binaries for Lambda compatibility)
-Write-Host "Installing Lambda python dependencies..." -ForegroundColor Gray
+# Install pip packages (forcing Linux x86_64 binaries for Lambda compatibility)
+Write-Host "Installing Lambda python dependencies (x86_64)..." -ForegroundColor Gray
 $reqPath = Join-Path $PSScriptRoot "lambda\requirements.txt"
 pip install --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 --implementation cp -r $reqPath -t $lambdaDist
+
+# Download and merge arm64 (aarch64) psycopg-binary to ensure compatibility with arm64 Lambda functions
+Write-Host "Downloading and merging Lambda python dependencies (arm64/aarch64) for maximum compatibility..." -ForegroundColor Gray
+$tempArmDir = Join-Path $PSScriptRoot "temp_arm"
+if (Test-Path $tempArmDir) { Remove-Item -Recurse -Force $tempArmDir }
+New-Item -ItemType Directory -Path $tempArmDir | Out-Null
+try {
+    pip install --platform manylinux2014_aarch64 --only-binary=:all: --python-version 3.12 --implementation cp psycopg-binary -t $tempArmDir
+    Copy-Item -Path "$tempArmDir\*" -Destination $lambdaDist -Recurse -Force
+}
+finally {
+    if (Test-Path $tempArmDir) { Remove-Item -Recurse -Force $tempArmDir }
+}
 
 # Copy backend app & data code
 Write-Host "Copying backend application files..." -ForegroundColor Gray
