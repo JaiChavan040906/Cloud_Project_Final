@@ -154,7 +154,7 @@ cd frontend && npm run dev
 
 ## Event Simulator
 
-The simulator steps through 20 predefined CSV events to populate the system with demo data:
+The simulator steps through 36 predefined CSV events (6 patients, P101-P106) to populate the system with demo data:
 
 1. Navigate to **http://localhost:5173/simulator** or click **Simulator** in the sidebar
 2. Click **[Next Event]** to process events one at a time
@@ -219,7 +219,8 @@ app/                    # FastAPI backend
 ├── engine/             # Event routing & vitals risk evaluation
 │   ├── routing.py
 │   └── risk.py
-└── services/           # SQS, S3, notifications
+└── services/           # Event bus, SQS, S3, notifications
+    ├── event_bus.py
     ├── notifications.py
     ├── sqs.py
     └── s3.py
@@ -235,7 +236,7 @@ frontend/src/           # React frontend
 └── lib/                # cn() utility
 
 data/
-└── hospital_events.csv # 20 predefined simulation events
+└── hospital_events.csv # 36 predefined simulation events (6 patients)
 
 deploy/                 # AWS deployment scripts & configs
 ├── startup.sh
@@ -244,15 +245,15 @@ deploy/                 # AWS deployment scripts & configs
 ├── cloudwatch-agent.json
 └── init-aws.sh         # LocalStack init (creates SQS queue + S3 bucket)
 
-lambda/                 # Standalone AWS Lambda handler
-├── handler.py
-└── ...
+lambda/                 # Standalone AWS Lambda handler (SQS-triggered, self-contained)
+└── handler.py
 
 tests/                  # Pytest test suite
-├── test_risk.py
-├── test_routing.py
+├── __init__.py
+├── conftest.py
 ├── test_api.py
-└── conftest.py
+├── test_risk.py
+└── test_routing.py
 ```
 
 ## Troubleshooting
