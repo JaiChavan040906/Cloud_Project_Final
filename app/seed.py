@@ -27,6 +27,7 @@ def seed():
 
         print("Clearing existing simulation data to prevent duplicates...")
         from app.models import Alert, Appointment, Event, Medication, Notification, Patient, Review
+
         db.query(Alert).delete()
         db.query(Appointment).delete()
         db.query(Event).delete()
